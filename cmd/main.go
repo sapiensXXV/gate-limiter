@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"fmt"
 	"gate-limiter/internal/limiter"
 	"gate-limiter/pkg/redisclient"
 	"github.com/joho/godotenv"
@@ -22,13 +21,17 @@ func main() {
 	redisclient.InitRedis()
 
 	// handler
-	http.HandleFunc("/", limiter.HandleRateLimit)
+	http.Handle("/", limiter.NewRateLimitHandler(
+		&limiter.HttpRateLimitMatcher{},
+		&limiter.DefaultProxyHandler{},
+		&limiter.HttpLimitResponder{},
+	))
 	err := http.ListenAndServe(":8081", nil)
 
 	if errors.Is(err, http.ErrServerClosed) {
-		fmt.Println("server closed\n")
+		log.Println("server closed\n")
 	} else if err != nil {
-		fmt.Println("error starting server", err)
+		log.Println("error starting server", err)
 		os.Exit(1)
 	}
 }
