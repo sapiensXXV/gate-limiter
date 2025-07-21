@@ -18,6 +18,12 @@ type RateLimitMatcher interface {
 
 type HttpRateLimitMatcher struct{} // HTTP IP와 url Path를 기반으로 처리율 제한을 검사하는 구현체
 
+var _ RateLimitMatcher = (*HttpRateLimitMatcher)(nil)
+
+func NewHttpRateLimitMatcher() *HttpRateLimitMatcher {
+	return &HttpRateLimitMatcher{}
+}
+
 func (rc *HttpRateLimitMatcher) IsTarget(method, url string) bool {
 	return checkRateLimitTarget(method, url)
 }

@@ -13,6 +13,12 @@ type ProxyHandler interface {
 
 type DefaultProxyHandler struct{}
 
+var _ ProxyHandler = (*DefaultProxyHandler)(nil)
+
+func NewDefaultProxyHandler() *DefaultProxyHandler {
+	return &DefaultProxyHandler{}
+}
+
 func (dph *DefaultProxyHandler) ToOrigin(w http.ResponseWriter, r *http.Request) {
 	target, err := url.Parse("https://gongnomok.com")
 	if err != nil {

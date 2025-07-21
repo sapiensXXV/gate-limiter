@@ -2,7 +2,7 @@ package main
 
 import (
 	"errors"
-	"gate-limiter/internal/limiter"
+	"gate-limiter/internal/app"
 	"gate-limiter/pkg/redisclient"
 	"github.com/joho/godotenv"
 	"log"
@@ -21,11 +21,7 @@ func main() {
 	redisclient.InitRedis()
 
 	// handler
-	http.Handle("/", limiter.NewRateLimitHandler(
-		&limiter.HttpRateLimitMatcher{},
-		&limiter.DefaultProxyHandler{},
-		&limiter.HttpLimitResponder{},
-	))
+	http.Handle("/", app.InitializeRateHandler())
 	err := http.ListenAndServe(":8081", nil)
 
 	if errors.Is(err, http.ErrServerClosed) {
