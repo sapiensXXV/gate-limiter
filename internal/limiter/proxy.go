@@ -14,7 +14,7 @@ type ProxyHandler interface {
 type DefaultProxyHandler struct{}
 
 func (dph *DefaultProxyHandler) ToOrigin(w http.ResponseWriter, r *http.Request) {
-	target, err := url.Parse("http://localhost:8080")
+	target, err := url.Parse("https://gongnomok.com")
 	if err != nil {
 		http.Error(w, "Bad Gateway", http.StatusBadGateway)
 		return

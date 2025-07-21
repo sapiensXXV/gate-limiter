@@ -3,6 +3,7 @@ package limiter
 import (
 	"fmt"
 	"gate-limiter/pkg/redisclient"
+	"log"
 	"net/http"
 	"regexp"
 	"time"
@@ -52,6 +53,7 @@ func isRequestAllowed(address string) (bool, int) {
 // HTTP method와 url path를 보고 접근 제한 관리 대상인지 파악하는 메서드
 // 추후 댓글작성 API 뿐만이 아니라 다른 API도 대응가능해야함.
 func checkRateLimitTarget(method string, path string) bool {
+	log.Printf("[%s] url_path:[%s] 를 검사합니다.", method, path)
 	if method == http.MethodPost && commentPathPattern.MatchString(path) {
 		return true
 	}
