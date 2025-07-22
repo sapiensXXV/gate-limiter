@@ -24,9 +24,17 @@ type HttpLimitResponder struct {
 	KeyGenerator   KeyGenerator
 }
 
-func NewHttpLimitResponder(redisClient redisclient.RedisClient, keyGenerator KeyGenerator) *HttpLimitResponder {
+func NewHttpLimitResponder(
+	calcRetryAfter func(key string) int,
+	redisClient redisclient.RedisClient,
+	keyGenerator KeyGenerator,
+) *HttpLimitResponder {
 	h := &HttpLimitResponder{}
-	h.CalcRetryAfter = h.defaultCalculateRetryAfter
+	if calcRetryAfter != nil {
+		h.CalcRetryAfter = calcRetryAfter
+	} else {
+		h.CalcRetryAfter = h.defaultCalculateRetryAfter
+	}
 	h.RedisClient = redisClient
 	h.KeyGenerator = keyGenerator
 	return h

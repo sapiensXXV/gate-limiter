@@ -23,9 +23,10 @@ type HttpRateLimitMatcher struct {
 
 var _ RateLimitMatcher = (*HttpRateLimitMatcher)(nil)
 
-func NewHttpRateLimitMatcher(keyGenerator KeyGenerator) *HttpRateLimitMatcher {
+func NewHttpRateLimitMatcher(keyGenerator KeyGenerator, redisClient redisclient.RedisClient) *HttpRateLimitMatcher {
 	h := &HttpRateLimitMatcher{}
 	h.KeyGenerator = keyGenerator
+	h.RedisClient = redisClient
 	return h
 }
 

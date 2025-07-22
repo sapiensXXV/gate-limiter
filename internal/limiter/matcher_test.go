@@ -7,8 +7,9 @@ import (
 )
 
 func TestHttpRateLimitMatcher_IsTarget(t *testing.T) {
-	keyGenerator := &IpKeyGenerator{}
-	httpRateLimitMatcher := NewHttpRateLimitMatcher(keyGenerator)
+	keyGenerator := &IpKeyGenerator{} // KeyGenerator
+	rc := &MockRedisClient{}          // RedisClient
+	httpRateLimitMatcher := NewHttpRateLimitMatcher(keyGenerator, rc)
 
 	passUrlPath := "/api/item/1/comment"
 	result := httpRateLimitMatcher.IsTarget(http.MethodPost, passUrlPath)
@@ -19,6 +20,22 @@ func TestHttpRateLimitMatcher_IsTarget(t *testing.T) {
 	assert.False(t, result)
 }
 
-func TestHttpRateLimitMatcher_IsAllowed(t *testing.T) {
-	keyGenerator :=
+func TestHttpRateLimitMatcher_IsAllowed_Allowed(t *testing.T) {
+	keyGenerator := &MockKeyGenerator{}
+	rc := &MockRedisClient{size: AllowedCount - 2} // 허용치보다 2개 여유 있는 상태
+	matcher := NewHttpRateLimitMatcher(keyGenerator, rc)
+
+	allowed, remaining := matcher.IsAllowed("192.0.2.1")
+	assert.True(t, allowed)
+	assert.Equal(t, AllowedCount-3, remaining)
+}
+
+func TestHttpRateLimitMatcher_IsAllowed_Refused(t *testing.T) {
+	keyGenerator := &MockKeyGenerator{}
+	rc := &MockRedisClient{size: AllowedCount + 1} // 허용치보다 하나가 많은 상태
+	matcher := NewHttpRateLimitMatcher(keyGenerator, rc)
+
+	allowed, remaining := matcher.IsAllowed("192.0.2.1")
+	assert.False(t, allowed)
+	assert.Equal(t, 0, remaining) // 현재 허용된 요청 갯수 0개 (요청불가)
 }
