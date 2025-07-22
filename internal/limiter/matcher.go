@@ -18,6 +18,7 @@ type RateLimitMatcher interface {
 
 type HttpRateLimitMatcher struct {
 	KeyGenerator KeyGenerator
+	RedisClient  redisclient.RedisClient
 } // HTTP IP와 url Path를 기반으로 처리율 제한을 검사하는 구현체
 
 var _ RateLimitMatcher = (*HttpRateLimitMatcher)(nil)
@@ -43,15 +44,15 @@ func (rc *HttpRateLimitMatcher) IsAllowed(ip string) (bool, int) {
 	var err error
 	now := time.Now()
 
-	err = redisclient.RemoveOldEntries(key, now.Add(-1*time.Minute))
+	err = rc.RedisClient.RemoveOldEntries(key, now.Add(-1*time.Minute))
 	if err != nil {
 		log.Println("error while removing old entries:", err)
 	}
-	err = redisclient.AddToSortedSet(key, now.String(), now)
+	err = rc.RedisClient.AddToSortedSet(key, now.String(), now)
 	if err != nil {
 		log.Println("error while adding to sorted set:", err)
 	}
-	size := redisclient.GetZSetSize(key)
+	size := rc.RedisClient.GetZSetSize(key)
 	if size > AllowedCount {
 		return false, 0
 	}

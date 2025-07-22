@@ -2,6 +2,7 @@ package redisclient
 
 import (
 	"context"
+	"fmt"
 	"github.com/redis/go-redis/v9"
 	"log"
 	"os"
@@ -14,6 +15,7 @@ type RedisClient interface {
 	AddToSortedSet(key, member string, score time.Time) error
 	GetZSetSize(key string) int
 	GetOldestEntry(key string) (redis.Z, error)
+	RemoveOldEntry(key string, before time.Time) error
 }
 
 type DefaultRedisClient struct {
@@ -72,4 +74,11 @@ func (d *DefaultRedisClient) GetOldestEntry(key string) (redis.Z, error) {
 		log.Println("redis: get oldest entry fail")
 	}
 	return vals[0], err
+}
+
+// zset
+
+func (d *DefaultRedisClient) RemoveOldEntry(key string, before time.Time) error {
+	score := float64(before.Unix())
+	return d.rdb.ZRemRangeByScore(ctx, key, "0", fmt.Sprintf("%f", score)).Err()
 }
