@@ -8,12 +8,17 @@ import (
 func InitializeRateHandler() *limiter.RateLimitHandler {
 
 	redisClient := initRedisClient()
+	keyGenerator := initKeyGenerator()
 
-	responder := limiter.NewHttpLimitResponder(redisClient)
+	responder := limiter.NewHttpLimitResponder(redisClient, keyGenerator)
 	proxy := limiter.NewDefaultProxyHandler()
-	matcher := limiter.NewHttpRateLimitMatcher()
+	matcher := limiter.NewHttpRateLimitMatcher(keyGenerator)
 
 	return limiter.NewRateLimitHandler(matcher, proxy, responder)
+}
+
+func initKeyGenerator() *limiter.IpKeyGenerator {
+	return &limiter.IpKeyGenerator{}
 }
 
 func initRedisClient() redisclient.RedisClient {

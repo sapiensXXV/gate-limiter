@@ -22,8 +22,10 @@ type HttpRateLimitMatcher struct {
 
 var _ RateLimitMatcher = (*HttpRateLimitMatcher)(nil)
 
-func NewHttpRateLimitMatcher() *HttpRateLimitMatcher {
-	return &HttpRateLimitMatcher{}
+func NewHttpRateLimitMatcher(keyGenerator KeyGenerator) *HttpRateLimitMatcher {
+	h := &HttpRateLimitMatcher{}
+	h.KeyGenerator = keyGenerator
+	return h
 }
 
 func (rc *HttpRateLimitMatcher) IsTarget(method, urlPath string) bool {

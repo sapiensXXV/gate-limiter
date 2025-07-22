@@ -24,10 +24,11 @@ type HttpLimitResponder struct {
 	KeyGenerator   KeyGenerator
 }
 
-func NewHttpLimitResponder(redisClient redisclient.RedisClient) *HttpLimitResponder {
+func NewHttpLimitResponder(redisClient redisclient.RedisClient, keyGenerator KeyGenerator) *HttpLimitResponder {
 	h := &HttpLimitResponder{}
 	h.CalcRetryAfter = h.defaultCalculateRetryAfter
 	h.RedisClient = redisClient
+	h.KeyGenerator = keyGenerator
 	return h
 }
 
