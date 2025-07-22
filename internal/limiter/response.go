@@ -21,6 +21,7 @@ type LimitResponder interface {
 type HttpLimitResponder struct {
 	CalcRetryAfter func(key string) int
 	RedisClient    redisclient.RedisClient
+	KeyGenerator   KeyGenerator
 }
 
 func NewHttpLimitResponder(redisClient redisclient.RedisClient) *HttpLimitResponder {
@@ -32,7 +33,7 @@ func NewHttpLimitResponder(redisClient redisclient.RedisClient) *HttpLimitRespon
 
 func (h *HttpLimitResponder) RespondRateLimitExceeded(w http.ResponseWriter, r *http.Request, remaining int) {
 	ipAddress := r.Header.Get(XForwardedFor)
-	key := MakeRateLimitKey(ipAddress, "comment") // 이부분도 언젠가는 yml로 받아서 처리하길
+	key := h.KeyGenerator.Make(ipAddress, "comment") // 이부분도 언젠가는 yml로 받아서 처리하길
 	retryAfter := h.CalcRetryAfter(key)
 
 	w.Header().Set(XRateLimitRemaining, strconv.Itoa(remaining))

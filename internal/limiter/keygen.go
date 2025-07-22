@@ -1,8 +1,13 @@
 package limiter
 
-import "fmt"
+type KeyGenerator interface {
+	Make(identifier string, category string) string
+}
 
-// Redis 키 생성 유틸 함수
-func MakeRateLimitKey(ip string, category string) string {
-	return fmt.Sprintf("%s_%s", ip, category)
+type IpKeyGenerator struct{}
+
+var _ KeyGenerator = (*IpKeyGenerator)(nil)
+
+func (k *IpKeyGenerator) Make(identifier string, category string) string {
+	return identifier + ":" + category
 }
