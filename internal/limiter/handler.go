@@ -1,6 +1,7 @@
 package limiter
 
 import (
+	config_ratelimiter "gate-limiter/config/ratelimiter"
 	"log"
 	"net/http"
 )
@@ -12,6 +13,7 @@ type RateLimitHandler struct {
 	Matcher   RateLimitMatcher
 	Proxy     ProxyHandler
 	Responder LimitResponder
+	Config    config_ratelimiter.RateLimiterConfig
 }
 
 var _ http.Handler = (*RateLimitHandler)(nil)
@@ -20,11 +22,13 @@ func NewRateLimitHandler(
 	matcher RateLimitMatcher,
 	proxy ProxyHandler,
 	responder LimitResponder,
+	config config_ratelimiter.RateLimiterConfig,
 ) *RateLimitHandler {
 	return &RateLimitHandler{
 		Matcher:   matcher,
 		Proxy:     proxy,
 		Responder: responder,
+		Config:    config,
 	}
 }
 

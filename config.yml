@@ -1,0 +1,17 @@
+rateLimiter:
+  default:
+    limit: 500
+    windowSeconds: 3600
+
+  client:
+    - key: ipv4
+      header: x_forwarded_for
+      limit: 50
+      windowSeconds: 60
+
+  apis:
+    - key: comment_write
+      path: /api/comment
+      method: POST
+      limit: 5
+      windowSeconds: 60

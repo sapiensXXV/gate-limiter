@@ -1,11 +1,12 @@
 package app
 
 import (
+	config_ratelimiter "gate-limiter/config/ratelimiter"
 	"gate-limiter/internal/limiter"
 	"gate-limiter/pkg/redisclient"
 )
 
-func InitializeRateHandler() *limiter.RateLimitHandler {
+func InitializeRateHandler(config config_ratelimiter.RateLimiterConfig rateLimiterConfig) *limiter.RateLimitHandler {
 
 	redisClient := initRedisClient()
 	keyGenerator := initKeyGenerator()
