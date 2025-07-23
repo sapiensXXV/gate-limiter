@@ -9,11 +9,15 @@ import (
 	"time"
 )
 
-var commentPathPattern = regexp.MustCompile(`^/api/item/[\w-]+/comment$`)
+//var commentPathPattern = regexp.MustCompile(`^/api/item/[\w-]+/comment$`)
 
 type RateLimitMatcher interface {
 	IsTarget(method, url string) bool
 	IsAllowed(ip string) (bool, int) // (허용 여부, 남은 허용 요청량)
+}
+
+type PathMatcher interface {
+	Match(path string, target string) bool
 }
 
 type HttpRateLimitMatcher struct {
@@ -23,6 +27,11 @@ type HttpRateLimitMatcher struct {
 } // HTTP IP와 url Path를 기반으로 처리율 제한을 검사하는 구현체
 
 var _ RateLimitMatcher = (*HttpRateLimitMatcher)(nil)
+
+const (
+	regex = "regex"
+	plain = "plain"
+)
 
 func NewHttpRateLimitMatcher(
 	keyGenerator KeyGenerator,
@@ -37,13 +46,19 @@ func NewHttpRateLimitMatcher(
 }
 
 func (rc *HttpRateLimitMatcher) IsTarget(requestMethod, requestPath string) bool {
-	log.Printf("[%s] url_path:[%s] 를 검사합니다.", requestMethod, requestPath)
-	// TODO URL 패턴 매칭 고민
+	// 경로와 HTTP 메서드가 둘다 일치해야 제한 대상으로 판명
 	apis := rc.Config.Apis
 	for _, api := range apis {
-		targetPath := api.Path
-		targetMethod := api.Method
-		if requestMethod == targetMethod && requestPath == targetPath {
+		pathExpression := api.Path.Expression
+		targetPath := api.Path.Value
+		var result bool
+		// 경로 표현 방식에 따라 경로 매칭 방식 결정
+		if pathExpression == regex {
+			result = rc.matchRegexPath(requestPath, targetPath)
+		} else if pathExpression == plain {
+			result = rc.matchPlainPath(requestPath, targetPath)
+		}
+		if result && requestMethod == api.Method {
 			return true
 		}
 	}
@@ -71,4 +86,16 @@ func (rc *HttpRateLimitMatcher) IsAllowed(ip string) (bool, int) {
 	}
 
 	return true, rc.Config.Apis[0].Limit - size
+}
+
+func (rc *HttpRateLimitMatcher) matchPlainPath(requestPath string, target string) bool {
+	return requestPath == target
+}
+
+func (rc *HttpRateLimitMatcher) matchRegexPath(requestPath string, target string) bool {
+	r, err := regexp.Compile(target)
+	if err != nil {
+		log.Println("error while compile regex:", err)
+	}
+	return r.MatchString(requestPath)
 }

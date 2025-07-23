@@ -24,12 +24,17 @@ type RateLimiterConfig struct {
 
 	// 경로/행위 기준의 제한
 	Apis []struct {
-		Key           string `yaml:"key"`
-		Path          string `yaml:"path"`
-		Method        string `yaml:"method"`
-		Limit         int    `yaml:"limit"`
-		WindowSeconds int    `yaml:"windowSeconds"`
+		Key           string          `yaml:"key"`
+		Path          RateLimiterPath `yaml:"path"`
+		Method        string          `yaml:"method"`
+		Limit         int             `yaml:"limit"`
+		WindowSeconds int             `yaml:"windowSeconds"`
 	} `yaml:"apis"`
+}
+
+type RateLimiterPath struct {
+	Expression string `yaml:"expression"`
+	Value      string `yaml:"value"`
 }
 
 func LoadRateLimitConfig(path string) (*RootRateLimiterConfig, error) {

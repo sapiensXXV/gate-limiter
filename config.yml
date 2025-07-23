@@ -7,7 +7,9 @@ rateLimiter:
     windowSeconds: 60
   apis: # 특정 API 처리량 제한
     - key: comment_write
-      path: /api/comment
+      path:
+        expression: regex
+        value: /api/comment
       method: POST
       limit: 5
       windowSeconds: 60
