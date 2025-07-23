@@ -10,9 +10,9 @@ func InitializeRateHandler() *limiter.RateLimitHandler {
 	redisClient := initRedisClient()
 	keyGenerator := initKeyGenerator()
 
-	responder := limiter.NewHttpLimitResponder(redisClient, keyGenerator)
+	responder := limiter.NewHttpLimitResponder(nil, redisClient, keyGenerator)
 	proxy := limiter.NewDefaultProxyHandler()
-	matcher := limiter.NewHttpRateLimitMatcher(keyGenerator)
+	matcher := limiter.NewHttpRateLimitMatcher(keyGenerator, redisClient)
 
 	return limiter.NewRateLimitHandler(matcher, proxy, responder)
 }
