@@ -12,8 +12,8 @@ import (
 //var commentPathPattern = regexp.MustCompile(`^/api/item/[\w-]+/comment$`)
 
 type RateLimitMatcher interface {
-	IsTarget(method, url string) bool
-	IsAllowed(ip string) (bool, int) // (허용 여부, 남은 허용 요청량)
+	IsTarget(method, url string) (bool, *config_ratelimiter.Api)
+	IsAllowed(ip string, api *config_ratelimiter.Api) (bool, int) // (허용 여부, 남은 허용 요청량)
 }
 
 type PathMatcher interface {
@@ -45,7 +45,7 @@ func NewHttpRateLimitMatcher(
 	return h
 }
 
-func (rc *HttpRateLimitMatcher) IsTarget(requestMethod, requestPath string) bool {
+func (rc *HttpRateLimitMatcher) IsTarget(requestMethod, requestPath string) (bool, *config_ratelimiter.Api) {
 	// 경로와 HTTP 메서드가 둘다 일치해야 제한 대상으로 판명
 	apis := rc.Config.Apis
 	for _, api := range apis {
@@ -59,20 +59,20 @@ func (rc *HttpRateLimitMatcher) IsTarget(requestMethod, requestPath string) bool
 			result = rc.matchPlainPath(requestPath, targetPath)
 		}
 		if result && requestMethod == api.Method {
-			return true
+			return true, &api
 		}
 	}
-	return false
+	return false, nil
 }
 
-func (rc *HttpRateLimitMatcher) IsAllowed(ip string) (bool, int) {
+func (rc *HttpRateLimitMatcher) IsAllowed(ip string, api *config_ratelimiter.Api) (bool, int) {
 	fmt.Printf("ip_adrress: [%s]를 검사합니다.\n", ip)
-	key := rc.KeyGenerator.Make(ip, rc.Config.Apis[0].Key)
+	key := rc.KeyGenerator.Make(ip, api.Key)
 
 	var err error
 	now := time.Now()
 
-	err = rc.RedisClient.RemoveOldEntries(key, now.Add(-1*time.Minute))
+	err = rc.RedisClient.RemoveOldEntries(key, now.Add(-time.Duration(api.WindowSeconds)*time.Second))
 	if err != nil {
 		log.Println("error while removing old entries:", err)
 	}
@@ -81,11 +81,11 @@ func (rc *HttpRateLimitMatcher) IsAllowed(ip string) (bool, int) {
 		log.Println("error while adding to sorted set:", err)
 	}
 	size := rc.RedisClient.GetZSetSize(key)
-	if size > rc.Config.Apis[0].Limit {
+	if size > api.Limit {
 		return false, 0
 	}
 
-	return true, rc.Config.Apis[0].Limit - size
+	return true, api.Limit - size
 }
 
 func (rc *HttpRateLimitMatcher) matchPlainPath(requestPath string, target string) bool {

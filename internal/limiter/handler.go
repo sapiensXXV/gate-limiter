@@ -33,14 +33,16 @@ func NewRateLimitHandler(
 }
 
 func (h *RateLimitHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if !h.Matcher.IsTarget(r.Method, r.URL.String()) {
+	isTarget, api := h.Matcher.IsTarget(r.Method, r.URL.String())
+
+	if !isTarget {
 		log.Printf("[%s] url_path:[%s] 는 검사 대상이 아닙니다.", r.Method, r.URL.Path)
 		h.Proxy.ToOrigin(w, r)
 		return
 	}
 
 	log.Printf("[%s] url_path:[%s] 는 검사 대상입니다.", r.Method, r.URL.Path)
-	allowed, remaining := h.Matcher.IsAllowed(r.Header.Get(h.Config.Identity.Header))
+	allowed, remaining := h.Matcher.IsAllowed(r.Header.Get(h.Config.Identity.Header), api)
 	if !allowed {
 		log.Printf("[%s] url_path:[%s] 는 허용치를 초과하였습니다.", r.Method, r.URL.Path)
 		h.Responder.RespondRateLimitExceeded(w, r, remaining)

@@ -8,11 +8,16 @@ import (
 	"log"
 )
 
-func InitializeRateHandler(config config_ratelimiter.RateLimiterConfig) *limiter.RateLimitHandler {
+func InitializeRateHandler() *limiter.RateLimitHandler {
 
-	// config의 내용에 따라서 주입해줄 구조체를 여기서 결정해야한다.
+	// Load config.yml
+	rlc, err := config_ratelimiter.LoadRateLimitConfig("config.yml")
+	if err != nil {
+		log.Println("error occur while loading config.yml", err)
+	}
+	config := rlc.RateLimiter
 
-	redisClient := initRedisClient()
+	redisClient := initRedisClient(config)
 	keyGenerator, err := initKeyGenerator(config)
 	if err != nil {
 		log.Fatalln("init key_generator fail")
@@ -20,7 +25,7 @@ func InitializeRateHandler(config config_ratelimiter.RateLimiterConfig) *limiter
 
 	responder := limiter.NewHttpLimitResponder(nil, redisClient, keyGenerator, config)
 	proxy := limiter.NewDefaultProxyHandler()
-	matcher := limiter.NewHttpRateLimitMatcher(keyGenerator, redisClient)
+	matcher := limiter.NewHttpRateLimitMatcher(keyGenerator, redisClient, config)
 
 	return limiter.NewRateLimitHandler(matcher, proxy, responder, config)
 }
@@ -33,6 +38,6 @@ func initKeyGenerator(config config_ratelimiter.RateLimiterConfig) (*limiter.IpK
 	return nil, errors.New("wrong identity key value")
 }
 
-func initRedisClient() redisclient.RedisClient {
+func initRedisClient(config config_ratelimiter.RateLimiterConfig) redisclient.RedisClient {
 	return redisclient.NewDefaultRedisClient()
 }

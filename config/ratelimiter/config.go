@@ -23,13 +23,15 @@ type RateLimiterConfig struct {
 	} `yaml:"client"`
 
 	// 경로/행위 기준의 제한
-	Apis []struct {
-		Key           string          `yaml:"key"`
-		Path          RateLimiterPath `yaml:"path"`
-		Method        string          `yaml:"method"`
-		Limit         int             `yaml:"limit"`
-		WindowSeconds int             `yaml:"windowSeconds"`
-	} `yaml:"apis"`
+	Apis []Api `yaml:"apis"`
+}
+
+type Api struct {
+	Key           string          `yaml:"key"`
+	Path          RateLimiterPath `yaml:"path"`
+	Method        string          `yaml:"method"`
+	Limit         int             `yaml:"limit"`
+	WindowSeconds int             `yaml:"windowSeconds"`
 }
 
 type RateLimiterPath struct {
@@ -39,7 +41,6 @@ type RateLimiterPath struct {
 
 func LoadRateLimitConfig(path string) (*RootRateLimiterConfig, error) {
 	buf, err := os.ReadFile(path)
-	log.Printf("설정파일=[%s]를 읽습니다.", path)
 	if err != nil {
 		return nil, err
 	}
