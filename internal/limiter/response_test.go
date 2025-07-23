@@ -15,7 +15,8 @@ func TestHttpLimitResponder_RespondRateLimitExceeded(t *testing.T) {
 	}
 	redisClient := NewMockRedisClient()
 	keyGenerator := NewMockKeyGenerator()
-	responder := NewHttpLimitResponder(calcRetryAfter, redisClient, keyGenerator)
+	//TODO config 설정
+	responder := NewHttpLimitResponder(calcRetryAfter, redisClient, keyGenerator, nil)
 
 	writer := httptest.NewRecorder()
 	request := &http.Request{Header: http.Header{}}

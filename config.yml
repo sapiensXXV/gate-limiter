@@ -1,7 +1,7 @@
 rateLimiter:
   identity:
     key: ipv4
-    header: x_forwarded_for
+    header: X-Forwarded-For
   client: # 클라이언트의 전체 처리량 제한
     limit: 50
     windowSeconds: 60

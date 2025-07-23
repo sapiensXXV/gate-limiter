@@ -1,7 +1,7 @@
 package limiter
 
 type KeyGenerator interface {
-	Make(identifier string, category string) string
+	Make(address string, identifier string) string
 }
 
 // IpKeyGenerator Generate a key based on an IPv4 address.
@@ -9,6 +9,10 @@ type IpKeyGenerator struct{}
 
 var _ KeyGenerator = (*IpKeyGenerator)(nil)
 
-func (k *IpKeyGenerator) Make(identifier string, category string) string {
-	return identifier + ":" + category
+func NewIpKeyGenerator() *IpKeyGenerator {
+	return &IpKeyGenerator{}
+}
+
+func (k *IpKeyGenerator) Make(address string, category string) string {
+	return address + ":" + category
 }

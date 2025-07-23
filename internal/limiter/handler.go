@@ -40,7 +40,7 @@ func (h *RateLimitHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Printf("[%s] url_path:[%s] 는 검사 대상입니다.", r.Method, r.URL.Path)
-	allowed, remaining := h.Matcher.IsAllowed(r.Header.Get(XForwardedFor))
+	allowed, remaining := h.Matcher.IsAllowed(r.Header.Get(h.Config.Identity.Header))
 	if !allowed {
 		log.Printf("[%s] url_path:[%s] 는 허용치를 초과하였습니다.", r.Method, r.URL.Path)
 		h.Responder.RespondRateLimitExceeded(w, r, remaining)

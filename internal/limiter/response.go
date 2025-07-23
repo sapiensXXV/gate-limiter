@@ -1,6 +1,7 @@
 package limiter
 
 import (
+	config_ratelimiter "gate-limiter/config/ratelimiter"
 	"gate-limiter/pkg/redisclient"
 	"log"
 	"net/http"
@@ -22,12 +23,14 @@ type HttpLimitResponder struct {
 	CalcRetryAfter func(key string) int
 	RedisClient    redisclient.RedisClient
 	KeyGenerator   KeyGenerator
+	Config         config_ratelimiter.RateLimiterConfig
 }
 
 func NewHttpLimitResponder(
 	calcRetryAfter func(key string) int,
 	redisClient redisclient.RedisClient,
 	keyGenerator KeyGenerator,
+	config config_ratelimiter.RateLimiterConfig,
 ) *HttpLimitResponder {
 	h := &HttpLimitResponder{}
 	if calcRetryAfter != nil {
@@ -37,12 +40,19 @@ func NewHttpLimitResponder(
 	}
 	h.RedisClient = redisClient
 	h.KeyGenerator = keyGenerator
+	h.Config = config
 	return h
 }
 
-func (h *HttpLimitResponder) RespondRateLimitExceeded(w http.ResponseWriter, r *http.Request, remaining int) {
-	ipAddress := r.Header.Get(XForwardedFor)
-	key := h.KeyGenerator.Make(ipAddress, "comment") // 이부분도 언젠가는 yml로 받아서 처리하길
+func (h *HttpLimitResponder) RespondRateLimitExceeded(
+	w http.ResponseWriter,
+	r *http.Request,
+	remaining int,
+) {
+	ipAddress := r.Header.Get(h.Config.Identity.Header)
+	// TODO Apis에 수동으로 인덱스를 주어야하는가? 설정한 목록대로 다 처리하려면 결국 반복문을 돌면서 ResponseRateLimitExceeded 메서드를 호출해야하는데
+	// 매개변수로 key, allow_count, header를 다 받아야하나? 그건 좀 에반데.
+	key := h.KeyGenerator.Make(ipAddress, h.Config.Apis[0].Key)
 	retryAfter := h.CalcRetryAfter(key)
 
 	w.Header().Set(XRateLimitRemaining, strconv.Itoa(remaining))
