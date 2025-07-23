@@ -6,7 +6,7 @@ import (
 	"gate-limiter/pkg/redisclient"
 )
 
-func InitializeRateHandler(config config_ratelimiter.RateLimiterConfig rateLimiterConfig) *limiter.RateLimitHandler {
+func InitializeRateHandler(config config_ratelimiter.RateLimiterConfig) *limiter.RateLimitHandler {
 
 	redisClient := initRedisClient()
 	keyGenerator := initKeyGenerator()
@@ -15,7 +15,7 @@ func InitializeRateHandler(config config_ratelimiter.RateLimiterConfig rateLimit
 	proxy := limiter.NewDefaultProxyHandler()
 	matcher := limiter.NewHttpRateLimitMatcher(keyGenerator, redisClient)
 
-	return limiter.NewRateLimitHandler(matcher, proxy, responder)
+	return limiter.NewRateLimitHandler(matcher, proxy, responder, config)
 }
 
 func initKeyGenerator() *limiter.IpKeyGenerator {

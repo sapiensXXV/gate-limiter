@@ -20,17 +20,19 @@ func main() {
 	}
 
 	// read config.yml/config.yaml file
-	rateLimiterConfig, err := config_ratelimiter.LoadRateLimitConfig("config.yml")
+	rlc, err := config_ratelimiter.LoadRateLimitConfig("config.yml")
 	if err != nil {
 		log.Fatal("Error loading config.yml file")
 	}
-	log.Println(rateLimiterConfig)
+	log.Println(rlc.RateLimiter.Identity)
+	log.Println(rlc.RateLimiter.Client)
+	log.Println(rlc.RateLimiter.Apis)
 
 	// redis initialization
 	redisclient.InitRedis()
 
 	// handler
-	http.Handle("/", app.InitializeRateHandler())
+	http.Handle("/", app.InitializeRateHandler(rlc.RateLimiter))
 	err = http.ListenAndServe(":8081", nil)
 
 	if errors.Is(err, http.ErrServerClosed) {

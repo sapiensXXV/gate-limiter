@@ -11,17 +11,15 @@ type RootRateLimiterConfig struct {
 }
 
 type RateLimiterConfig struct {
-	Default struct {
-		Limit         int `yaml:"limit"`
-		WindowSeconds int `yaml:"windowSeconds"`
-	} `yaml:"default"`
+	Identity struct {
+		Key    string `yaml:"key"`
+		Header string `yaml:"header"`
+	} `yaml:"identity"`
 
 	// 사용자 전체 요청량 제한
-	Client []struct {
-		Key           string `yaml:"key"`
-		Header        string `yaml:"header"`
-		Limit         int    `yaml:"limit"`
-		WindowSeconds int    `yaml:"windowSeconds"`
+	Client struct {
+		Limit         int `yaml:"limit"`
+		WindowSeconds int `yaml:"windowSeconds"`
 	} `yaml:"client"`
 
 	// 경로/행위 기준의 제한
