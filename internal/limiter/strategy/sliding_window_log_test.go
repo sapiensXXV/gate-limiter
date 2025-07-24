@@ -1,15 +1,17 @@
-package limiter
+package strategy
 
 import (
+	"gate-limiter/internal/limiter"
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"testing"
 )
 
 func TestHttpRateLimitMatcher_IsTarget(t *testing.T) {
-	keyGenerator := &IpKeyGenerator{} // KeyGenerator
-	rc := &MockRedisClient{}          // RedisClient
-	httpRateLimitMatcher := NewHttpRateLimitMatcher(keyGenerator, rc)
+	keyGenerator := &limiter.IpKeyGenerator{} // KeyGenerator
+	rc := &limiter.MockRedisClient{}          // RedisClient
+	// TODO config.yml mock 설정정보 객체
+	httpRateLimitMatcher := NewSlidingWindowCounterLimiter(keyGenerator, rc, nil)
 
 	passUrlPath := "/api/item/1/comment"
 	result := httpRateLimitMatcher.IsTarget(http.MethodPost, passUrlPath)
@@ -21,18 +23,18 @@ func TestHttpRateLimitMatcher_IsTarget(t *testing.T) {
 }
 
 func TestHttpRateLimitMatcher_IsAllowed_Allowed(t *testing.T) {
-	keyGenerator := &MockKeyGenerator{}
-	rc := &MockRedisClient{size: AllowedCount - 2} // 허용치보다 2개 여유 있는 상태
+	keyGenerator := &limiter.MockKeyGenerator{}
+	rc := &limiter.MockRedisClient{size: limiter.AllowedCount - 2} // 허용치보다 2개 여유 있는 상태
 	matcher := NewHttpRateLimitMatcher(keyGenerator, rc)
 
 	allowed, remaining := matcher.IsAllowed("192.0.2.1")
 	assert.True(t, allowed)
-	assert.Equal(t, AllowedCount-3, remaining)
+	assert.Equal(t, limiter.AllowedCount-3, remaining)
 }
 
 func TestHttpRateLimitMatcher_IsAllowed_Refused(t *testing.T) {
-	keyGenerator := &MockKeyGenerator{}
-	rc := &MockRedisClient{size: AllowedCount + 1} // 허용치보다 하나가 많은 상태
+	keyGenerator := &limiter.MockKeyGenerator{}
+	rc := &limiter.MockRedisClient{size: limiter.AllowedCount + 1} // 허용치보다 하나가 많은 상태
 	matcher := NewHttpRateLimitMatcher(keyGenerator, rc)
 
 	allowed, remaining := matcher.IsAllowed("192.0.2.1")
