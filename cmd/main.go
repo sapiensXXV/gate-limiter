@@ -32,7 +32,11 @@ func main() {
 	redisclient.InitRedis()
 
 	// handler
-	http.Handle("/", app.InitRateLimitHandler())
+	limitHandler, err := app.InitRateLimitHandler()
+	if err != nil {
+		log.Fatal("Error initializing rate limiter handler", err)
+	}
+	http.Handle("/", limitHandler)
 	err = http.ListenAndServe(":8081", nil)
 
 	if errors.Is(err, http.ErrServerClosed) {

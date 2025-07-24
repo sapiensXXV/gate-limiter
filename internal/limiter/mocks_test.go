@@ -2,6 +2,7 @@ package limiter
 
 import (
 	"errors"
+	"gate-limiter/internal/limiter/limiterutil"
 	"gate-limiter/pkg/redisclient"
 	"github.com/redis/go-redis/v9"
 	"net/http"
@@ -47,7 +48,7 @@ func NewMockRedisClient() *MockRedisClient {
 // ==================================================
 type MockKeyGenerator struct{}
 
-var _ KeyGenerator = (*MockKeyGenerator)(nil)
+var _ limiterutil.KeyGenerator = (*MockKeyGenerator)(nil)
 
 func (m *MockKeyGenerator) Make(identifier string, category string) string {
 	return identifier + ":" + category
@@ -63,7 +64,7 @@ func NewMockKeyGenerator() *MockKeyGenerator {
 type MockHttpLimitFailureResponder struct {
 	CalcRetryAfter func(key string) int
 	RedisClient    redisclient.RedisClient
-	KeyGenerator   KeyGenerator
+	KeyGenerator   limiterutil.KeyGenerator
 }
 
 var _ LimitResponder = (*MockHttpLimitFailureResponder)(nil)

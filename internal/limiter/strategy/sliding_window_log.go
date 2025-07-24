@@ -3,7 +3,7 @@ package strategy
 import (
 	"fmt"
 	config_ratelimiter "gate-limiter/config/ratelimiter"
-	"gate-limiter/internal/limiter"
+	"gate-limiter/internal/limiter/limiterutil"
 	"gate-limiter/pkg/redisclient"
 	"log"
 	"regexp"
@@ -11,7 +11,7 @@ import (
 )
 
 type SlidingWindowLogLimiter struct {
-	KeyGenerator limiter.KeyGenerator
+	KeyGenerator limiterutil.KeyGenerator
 	RedisClient  redisclient.RedisClient
 	Config       config_ratelimiter.RateLimiterConfig
 }
@@ -19,7 +19,7 @@ type SlidingWindowLogLimiter struct {
 var _ RateLimiter = (*SlidingWindowLogLimiter)(nil)
 
 func NewSlidingWindowLogLimiter(
-	keyGenerator limiter.KeyGenerator,
+	keyGenerator limiterutil.KeyGenerator,
 	redisClient redisclient.RedisClient,
 	config config_ratelimiter.RateLimiterConfig,
 ) RateLimiter {

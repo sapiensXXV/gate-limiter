@@ -2,12 +2,12 @@ package strategy
 
 import (
 	config_ratelimiter "gate-limiter/config/ratelimiter"
-	"gate-limiter/internal/limiter"
+	"gate-limiter/internal/limiter/limiterutil"
 	"gate-limiter/pkg/redisclient"
 )
 
 type TokenBucketLimiter struct {
-	KeyGenerator limiter.KeyGenerator
+	KeyGenerator limiterutil.KeyGenerator
 	RedisClient  redisclient.RedisClient
 	Config       config_ratelimiter.RateLimiterConfig
 }
@@ -15,7 +15,7 @@ type TokenBucketLimiter struct {
 var _ RateLimiter = (*TokenBucketLimiter)(nil)
 
 func NewTokenBucketLimiter(
-	keyGenerator limiter.KeyGenerator,
+	keyGenerator limiterutil.KeyGenerator,
 	redisClient redisclient.RedisClient,
 	config config_ratelimiter.RateLimiterConfig,
 ) RateLimiter {

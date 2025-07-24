@@ -1,4 +1,4 @@
-package limiter
+package limiterutil
 
 import (
 	"github.com/stretchr/testify/assert"

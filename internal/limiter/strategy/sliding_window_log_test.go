@@ -2,14 +2,15 @@ package strategy
 
 import (
 	"gate-limiter/internal/limiter"
+	"gate-limiter/internal/limiter/limiterutil"
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"testing"
 )
 
 func TestHttpRateLimitMatcher_IsTarget(t *testing.T) {
-	keyGenerator := &limiter.IpKeyGenerator{} // KeyGenerator
-	rc := &limiter.MockRedisClient{}          // RedisClient
+	keyGenerator := &limiterutil.IpKeyGenerator{} // KeyGenerator
+	rc := &limiter.MockRedisClient{}              // RedisClient
 	// TODO config.yml mock 설정정보 객체
 	httpRateLimitMatcher := NewSlidingWindowLogLimiter(keyGenerator, rc, nil)
 
