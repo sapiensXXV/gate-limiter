@@ -51,7 +51,7 @@ func (rc *SlidingWindowLogLimiter) IsTarget(requestMethod, requestPath string) (
 }
 
 func (rc *SlidingWindowLogLimiter) IsAllowed(ip string, api *config_ratelimiter.Api) (bool, int) {
-	fmt.Printf("ip_adrress: [%s]를 검사합니다.\n", ip)
+	fmt.Printf("ip_address: [%s]를 검사합니다.\n", ip)
 	key := rc.KeyGenerator.Make(ip, api.Key)
 
 	var err error

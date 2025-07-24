@@ -13,7 +13,7 @@ rateLimiter:
         expression: regex
         value: ^/api/item/\d+/comment$
       method: POST
-      limit: 5
+      limit: 3
       windowSeconds: 60
       target: https://gongnomok.com # 통과된 요청이 전달될 도메인
 
