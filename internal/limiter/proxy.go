@@ -8,7 +8,7 @@ import (
 )
 
 type ProxyHandler interface {
-	ToOrigin(w http.ResponseWriter, r *http.Request)
+	ToOrigin(w http.ResponseWriter, r *http.Request, origin string)
 }
 
 type DefaultProxyHandler struct{}
@@ -19,7 +19,7 @@ func NewDefaultProxyHandler() *DefaultProxyHandler {
 	return &DefaultProxyHandler{}
 }
 
-func (dph *DefaultProxyHandler) ToOrigin(w http.ResponseWriter, r *http.Request) {
+func (dph *DefaultProxyHandler) ToOrigin(w http.ResponseWriter, r *http.Request, origin string) {
 	target, err := url.Parse("https://gongnomok.com")
 	if err != nil {
 		http.Error(w, "Bad Gateway", http.StatusBadGateway)

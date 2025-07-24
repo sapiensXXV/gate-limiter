@@ -11,19 +11,20 @@ type RootRateLimiterConfig struct {
 }
 
 type RateLimiterConfig struct {
-	Identity struct {
-		Key    string `yaml:"key"`
-		Header string `yaml:"header"`
-	} `yaml:"identity"`
+	Strategy string         `yaml:"strategy"`
+	Identity ClientIdentity `yaml:"identity"`
+	Client   ClientLimit    `yaml:"client"`
+	Apis     []Api          `yaml:"apis"`
+}
 
-	// 사용자 전체 요청량 제한
-	Client struct {
-		Limit         int `yaml:"limit"`
-		WindowSeconds int `yaml:"windowSeconds"`
-	} `yaml:"client"`
+type ClientIdentity struct {
+	Key    string `yaml:"key"`
+	Header string `yaml:"header"`
+}
 
-	// 경로/행위 기준의 제한
-	Apis []Api `yaml:"apis"`
+type ClientLimit struct {
+	Limit         int `yaml:"limit"`
+	WindowSeconds int `yaml:"windowSeconds"`
 }
 
 type Api struct {
@@ -32,6 +33,7 @@ type Api struct {
 	Method        string          `yaml:"method"`
 	Limit         int             `yaml:"limit"`
 	WindowSeconds int             `yaml:"windowSeconds"`
+	Target        string          `yaml:"target"`
 }
 
 type RateLimiterPath struct {

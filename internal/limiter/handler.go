@@ -37,7 +37,7 @@ func (h *RateLimitHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if !isTarget {
 		log.Printf("[%s] url_path:[%s] 는 검사 대상이 아닙니다.", r.Method, r.URL.Path)
-		h.Proxy.ToOrigin(w, r)
+		h.Proxy.ToOrigin(w, r, api.Target)
 		return
 	}
 
@@ -49,5 +49,5 @@ func (h *RateLimitHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.Proxy.ToOrigin(w, r)
+	h.Proxy.ToOrigin(w, r, api.Target)
 }
