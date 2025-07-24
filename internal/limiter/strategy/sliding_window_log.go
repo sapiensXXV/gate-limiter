@@ -10,36 +10,27 @@ import (
 	"time"
 )
 
-type PathMatcher interface {
-	Match(path string, target string) bool
-}
-
-type SlidingWindowCounterLimiter struct {
+type SlidingWindowLogLimiter struct {
 	KeyGenerator limiter.KeyGenerator
 	RedisClient  redisclient.RedisClient
 	Config       config_ratelimiter.RateLimiterConfig
 }
 
-func NewSlidingWindowCounterLimiter(
+var _ RateLimiter = (*SlidingWindowLogLimiter)(nil)
+
+func NewSlidingWindowLogLimiter(
 	keyGenerator limiter.KeyGenerator,
 	redisClient redisclient.RedisClient,
 	config config_ratelimiter.RateLimiterConfig,
-) *SlidingWindowCounterLimiter {
-	h := &SlidingWindowCounterLimiter{}
+) RateLimiter {
+	h := &SlidingWindowLogLimiter{}
 	h.KeyGenerator = keyGenerator
 	h.RedisClient = redisClient
 	h.Config = config
 	return h
 }
 
-var _ RateLimiter = (*SlidingWindowCounterLimiter)(nil)
-
-const (
-	regex = "regex"
-	plain = "plain"
-)
-
-func (rc *SlidingWindowCounterLimiter) IsTarget(requestMethod, requestPath string) (bool, *config_ratelimiter.Api) {
+func (rc *SlidingWindowLogLimiter) IsTarget(requestMethod, requestPath string) (bool, *config_ratelimiter.Api) {
 	// 경로와 HTTP 메서드가 둘다 일치해야 제한 대상으로 판명
 	apis := rc.Config.Apis
 	for _, api := range apis {
@@ -59,7 +50,7 @@ func (rc *SlidingWindowCounterLimiter) IsTarget(requestMethod, requestPath strin
 	return false, nil
 }
 
-func (rc *SlidingWindowCounterLimiter) IsAllowed(ip string, api *config_ratelimiter.Api) (bool, int) {
+func (rc *SlidingWindowLogLimiter) IsAllowed(ip string, api *config_ratelimiter.Api) (bool, int) {
 	fmt.Printf("ip_adrress: [%s]를 검사합니다.\n", ip)
 	key := rc.KeyGenerator.Make(ip, api.Key)
 
@@ -82,11 +73,11 @@ func (rc *SlidingWindowCounterLimiter) IsAllowed(ip string, api *config_ratelimi
 	return true, api.Limit - size
 }
 
-func (rc *SlidingWindowCounterLimiter) matchPlainPath(requestPath string, target string) bool {
+func (rc *SlidingWindowLogLimiter) matchPlainPath(requestPath string, target string) bool {
 	return requestPath == target
 }
 
-func (rc *SlidingWindowCounterLimiter) matchRegexPath(requestPath string, target string) bool {
+func (rc *SlidingWindowLogLimiter) matchRegexPath(requestPath string, target string) bool {
 	r, err := regexp.Compile(target)
 	if err != nil {
 		log.Println("error while compile regex:", err)

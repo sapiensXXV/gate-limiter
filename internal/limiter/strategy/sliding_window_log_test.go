@@ -11,7 +11,7 @@ func TestHttpRateLimitMatcher_IsTarget(t *testing.T) {
 	keyGenerator := &limiter.IpKeyGenerator{} // KeyGenerator
 	rc := &limiter.MockRedisClient{}          // RedisClient
 	// TODO config.yml mock 설정정보 객체
-	httpRateLimitMatcher := NewSlidingWindowCounterLimiter(keyGenerator, rc, nil)
+	httpRateLimitMatcher := NewSlidingWindowLogLimiter(keyGenerator, rc, nil)
 
 	passUrlPath := "/api/item/1/comment"
 	result := httpRateLimitMatcher.IsTarget(http.MethodPost, passUrlPath)

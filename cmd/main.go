@@ -32,7 +32,7 @@ func main() {
 	redisclient.InitRedis()
 
 	// handler
-	http.Handle("/", app.InitializeRateHandler())
+	http.Handle("/", app.InitRateLimitHandler())
 	err = http.ListenAndServe(":8081", nil)
 
 	if errors.Is(err, http.ErrServerClosed) {
