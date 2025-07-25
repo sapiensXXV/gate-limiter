@@ -29,7 +29,7 @@ func NewSlidingWindowLogLimiter(
 	return h
 }
 
-func (l *SlidingWindowLogLimiter) IsTarget(requestMethod, requestPath string) (bool, *HttpMatchResult) {
+func (l *SlidingWindowLogLimiter) IsTarget(requestMethod, requestPath string) (bool, *ApiMatchResult) {
 	// 경로와 HTTP 메서드가 둘다 일치해야 제한 대상으로 판명
 	apis := l.Config.Apis
 	for _, api := range apis {
@@ -43,7 +43,7 @@ func (l *SlidingWindowLogLimiter) IsTarget(requestMethod, requestPath string) (b
 			result = limiterutil.MatchPlain(requestPath, targetPath)
 		}
 		if result && requestMethod == api.Method {
-			return true, &HttpMatchResult{
+			return true, &ApiMatchResult{
 				Key:           api.Key,
 				Limit:         api.Limit,
 				WindowSeconds: api.WindowSeconds,
@@ -54,7 +54,7 @@ func (l *SlidingWindowLogLimiter) IsTarget(requestMethod, requestPath string) (b
 	return false, nil
 }
 
-func (l *SlidingWindowLogLimiter) IsAllowed(ip string, api *HttpMatchResult) (bool, int) {
+func (l *SlidingWindowLogLimiter) IsAllowed(ip string, api *ApiMatchResult) (bool, int) {
 	fmt.Printf("ip_address: [%s]를 검사합니다.\n", ip)
 	key := l.KeyGenerator.Make(ip, api.Key)
 

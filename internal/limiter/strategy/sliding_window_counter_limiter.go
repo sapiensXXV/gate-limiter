@@ -26,12 +26,12 @@ func NewSlidingWindowCounterLimiter(
 	}
 }
 
-func (s *SlidingWindowCounterLimiter) IsTarget(method, url string) (bool, *HttpMatchResult) {
+func (s *SlidingWindowCounterLimiter) IsTarget(method, url string) (bool, *ApiMatchResult) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (s *SlidingWindowCounterLimiter) IsAllowed(ip string, api *HttpMatchResult) (bool, int) {
+func (s *SlidingWindowCounterLimiter) IsAllowed(ip string, api *ApiMatchResult) (bool, int) {
 	//TODO implement me
 	panic("implement me")
 }

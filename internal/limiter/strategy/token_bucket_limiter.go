@@ -1,7 +1,6 @@
 package strategy
 
 import (
-	"fmt"
 	config_ratelimiter "gate-limiter/config/ratelimiter"
 	"gate-limiter/internal/limiter/bucket"
 	"gate-limiter/internal/limiter/limiterutil"
@@ -31,7 +30,7 @@ func NewTokenBucketLimiter(
 	return h
 }
 
-func (l *TokenBucketLimiter) IsTarget(method, requestPath string) (bool, *HttpMatchResult) {
+func (l *TokenBucketLimiter) IsTarget(method, requestPath string) (bool, *ApiMatchResult) {
 	apis := l.Config.Apis
 	for _, api := range apis {
 		pathExpression := api.Path.Expression
@@ -43,7 +42,7 @@ func (l *TokenBucketLimiter) IsTarget(method, requestPath string) (bool, *HttpMa
 			result = limiterutil.MatchPlain(requestPath, targetPath)
 		}
 		if result && method == api.Method {
-			return true, &HttpMatchResult{
+			return true, &ApiMatchResult{
 				Key:           api.Key,
 				Limit:         api.Limit,
 				WindowSeconds: api.WindowSeconds,
@@ -56,41 +55,51 @@ func (l *TokenBucketLimiter) IsTarget(method, requestPath string) (bool, *HttpMa
 	return false, nil
 }
 
-func (l *TokenBucketLimiter) IsAllowed(ip string, api *HttpMatchResult) (bool, int) {
+func (l *TokenBucketLimiter) IsAllowed(ip string, api *ApiMatchResult) (bool, int) {
 	key := l.KeyGenerator.Make(ip, api.Key)
 	b, err := l.RedisClient.GetObject(key)
-	bb := b.(*bucket.TokenBucket)
+	bb, ok := b.(*bucket.TokenBucket)
+	if !ok {
+		log.Println("Invalid type assertion for key [%s]", key)
+		return false, 0
+	}
 	if err == redis.Nil {
-		// 버킷이 없는 경우
-		// 새로운 버킷을 만든다.
-		// last_refill_time을 현재로 설정한다.
-		newBucket := bucket.NewTokenBucket(api.Limit - 1)
+		// 버킷이 없는 경우 새로운 버킷을 만들고 마지막 토큰 리필 시간을 현재로 설정한다.
+		newBucket := bucket.NewTokenBucket(api.Limit)
 		newBucket.LastRefillTime = time.Now()
+		newBucket.Token-- // 토큰 한개 소비
 		if err := l.RedisClient.SetObject(key, newBucket, api.ExpireSeconds); err != nil {
 			log.Printf("redis value setting error: key=[%s], value=[%s], err=%v", key, newBucket, err)
 			return false, 0
 		}
-		return true, api.Limit - 1
+		return true, newBucket.Token
 
 	} else if err != nil {
 		log.Printf("redis Get error key:[%s]\n, err:%v\n", key, err)
-		return false, 0 // TODO 반환값 다시 고민해보기
+		return false, 0
 	}
 
 	// 버킷이 있는 경우
 	// 1. 마지막으로 버킷이 채워진 시간을 확인하고 토큰을 리필합니다.
-	elapsed := time.Since(bb.LastRefillTime)
-	if elapsed.Seconds() > float64(api.RefillSeconds) {
-		// 리필 시간보다 오래 된 경우 토큰을 다시 채운다.
-		bb.Token = api.Limit           // 토큰을 최대치로 다시 채워준다.
-		bb.LastRefillTime = time.Now() // 토큰 리필 시간 갱신
-	}
+	refillTokenIfNeeded(bb, api.Limit, api.RefillSeconds)
 
 	// 토큰에 여유가 있는지 확인한다
 	if bb.Token > 0 {
 		bb.Token-- // 토큰을 한개 사용한다.
+		err := l.RedisClient.SetObject(key, bb, api.ExpireSeconds)
+		if err != nil {
+			log.Printf("Redis SetObject Error:%v\n", err)
+			return false, 0
+		}
 		return true, bb.Token
 	}
-	fmt.Errorf("Not enough token: user=[%s]", key)
+	log.Printf("Not enough token: user=[%s]", key)
 	return false, 0 // 토큰이 없는 경우 요청을 거부한다.
+}
+
+func refillTokenIfNeeded(b *bucket.TokenBucket, limit int, refillSeconds int) {
+	if time.Since(b.LastRefillTime).Seconds() > float64(refillSeconds) {
+		b.Token = limit
+		b.LastRefillTime = time.Now()
+	}
 }

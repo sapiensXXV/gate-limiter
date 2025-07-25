@@ -26,12 +26,12 @@ func NewLeakyBucketLimiter(
 	return h
 }
 
-func (l *LeakyBucketLimiter) IsTarget(method, url string) (bool, *HttpMatchResult) {
+func (l *LeakyBucketLimiter) IsTarget(method, url string) (bool, *ApiMatchResult) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (l *LeakyBucketLimiter) IsAllowed(ip string, api *HttpMatchResult) (bool, int) {
+func (l *LeakyBucketLimiter) IsAllowed(ip string, api *ApiMatchResult) (bool, int) {
 	//TODO implement me
 	panic("implement me")
 }

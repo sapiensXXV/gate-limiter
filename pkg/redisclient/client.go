@@ -16,8 +16,10 @@ import (
 type RedisClient interface {
 	Get(key string) (interface{}, error)
 	GetObject(key string) (interface{}, error)
+	HGetObject(key string) (interface{}, error)
 	Set(key string, value interface{}, expiration int) error
 	SetObject(key string, value interface{}, expiration int) error
+	HSetObject(key string, value interface{}, expiration int) error
 	RemoveOldEntries(key string, cutoff time.Time) error
 	AddToSortedSet(key, member string, score time.Time) error
 	GetZSetSize(key string) int
@@ -81,6 +83,11 @@ func (d *DefaultRedisClient) GetObject(key string) (interface{}, error) {
 	return &bucket, nil
 }
 
+func (d *DefaultRedisClient) HGetObject(key string) (interface{}, error) {
+	// TODO implement this method
+	return nil, nil
+}
+
 func (d *DefaultRedisClient) Set(key string, value interface{}, expiration int) error {
 	return d.client.Set(d.ctx, key, value, time.Duration(expiration)*time.Second).Err()
 }
@@ -92,6 +99,11 @@ func (d *DefaultRedisClient) SetObject(key string, value interface{}, expiration
 		return fmt.Errorf("JSON marshal error for key=[%s]: %w\n", key, err)
 	}
 	return d.client.Set(d.ctx, key, jsonData, time.Duration(expiration)*time.Second).Err()
+}
+
+func (d *DefaultRedisClient) HSetObject(key string, value interface{}, expiration int) error {
+	// TODO implement this method
+	return errors.New("new error")
 }
 
 func (d *DefaultRedisClient) RemoveOldEntries(key string, cutoff time.Time) error {
