@@ -15,9 +15,16 @@ rateLimiter:
       method: POST
       limit: 3
       windowSeconds: 60
+      refillSeconds: 60
+      expireSeconds: 3600
       target: https://gongnomok.com # 통과된 요청이 전달될 도메인
-
+  storage:
+    method: redis
+    redis_domain: http://localhost:6379
 # TODO 추가로 구현해야하는 내용
 # TODO 미래에 HTTP가 아닌 다른 방법으로 오는 요청을 어떻게 대응할 것인가
 # 통과한 요청이 어디로 전달되어야하는지
 # 사용할 알고리즘은 무엇인지
+# 어떤 데이터 저장 시스템을 사용할 것인지
+  # in-memory
+  # redis

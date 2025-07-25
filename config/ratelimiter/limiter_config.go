@@ -1,4 +1,4 @@
-package config_ratelimiter
+package limiterconfig
 
 import (
 	"gopkg.in/yaml.v3"
@@ -33,6 +33,8 @@ type Api struct {
 	Method        string          `yaml:"method"`
 	Limit         int             `yaml:"limit"`
 	WindowSeconds int             `yaml:"windowSeconds"`
+	RefillSeconds int             `yaml:"refillSeconds"`
+	ExpireSeconds int             `yaml:"expireSeconds"`
 	Target        string          `yaml:"target"`
 }
 

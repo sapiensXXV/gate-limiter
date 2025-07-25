@@ -26,12 +26,12 @@ func NewFixedWindowCounterLimiter(
 	}
 }
 
-func (f *FixedWindowCounterLimiter) IsTarget(method, url string) (bool, *config_ratelimiter.Api) {
+func (f *FixedWindowCounterLimiter) IsTarget(method, url string) (bool, *HttpMatchResult) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (f *FixedWindowCounterLimiter) IsAllowed(ip string, api *config_ratelimiter.Api) (bool, int) {
+func (f *FixedWindowCounterLimiter) IsAllowed(ip string, api *HttpMatchResult) (bool, int) {
 	//TODO implement me
 	panic("implement me")
 }

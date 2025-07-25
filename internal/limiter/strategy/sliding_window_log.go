@@ -6,7 +6,6 @@ import (
 	"gate-limiter/internal/limiter/limiterutil"
 	"gate-limiter/pkg/redisclient"
 	"log"
-	"regexp"
 	"time"
 )
 
@@ -30,57 +29,50 @@ func NewSlidingWindowLogLimiter(
 	return h
 }
 
-func (rc *SlidingWindowLogLimiter) IsTarget(requestMethod, requestPath string) (bool, *config_ratelimiter.Api) {
+func (l *SlidingWindowLogLimiter) IsTarget(requestMethod, requestPath string) (bool, *HttpMatchResult) {
 	// 경로와 HTTP 메서드가 둘다 일치해야 제한 대상으로 판명
-	apis := rc.Config.Apis
+	apis := l.Config.Apis
 	for _, api := range apis {
 		pathExpression := api.Path.Expression
 		targetPath := api.Path.Value
 		var result bool
 		// 경로 표현 방식에 따라 경로 매칭 방식 결정
 		if pathExpression == regex {
-			result = rc.matchRegexPath(requestPath, targetPath)
+			result = limiterutil.MatchRegex(requestPath, targetPath)
 		} else if pathExpression == plain {
-			result = rc.matchPlainPath(requestPath, targetPath)
+			result = limiterutil.MatchPlain(requestPath, targetPath)
 		}
 		if result && requestMethod == api.Method {
-			return true, &api
+			return true, &HttpMatchResult{
+				Key:           api.Key,
+				Limit:         api.Limit,
+				WindowSeconds: api.WindowSeconds,
+				Target:        api.Target,
+			}
 		}
 	}
 	return false, nil
 }
 
-func (rc *SlidingWindowLogLimiter) IsAllowed(ip string, api *config_ratelimiter.Api) (bool, int) {
+func (l *SlidingWindowLogLimiter) IsAllowed(ip string, api *HttpMatchResult) (bool, int) {
 	fmt.Printf("ip_address: [%s]를 검사합니다.\n", ip)
-	key := rc.KeyGenerator.Make(ip, api.Key)
+	key := l.KeyGenerator.Make(ip, api.Key)
 
 	var err error
 	now := time.Now()
 
-	err = rc.RedisClient.RemoveOldEntries(key, now.Add(-time.Duration(api.WindowSeconds)*time.Second))
+	err = l.RedisClient.RemoveOldEntries(key, now.Add(-time.Duration(api.WindowSeconds)*time.Second))
 	if err != nil {
 		log.Println("error while removing old entries:", err)
 	}
-	err = rc.RedisClient.AddToSortedSet(key, now.String(), now)
+	err = l.RedisClient.AddToSortedSet(key, now.String(), now)
 	if err != nil {
 		log.Println("error while adding to sorted set:", err)
 	}
-	size := rc.RedisClient.GetZSetSize(key)
+	size := l.RedisClient.GetZSetSize(key)
 	if size > api.Limit {
 		return false, 0
 	}
 
 	return true, api.Limit - size
-}
-
-func (rc *SlidingWindowLogLimiter) matchPlainPath(requestPath string, target string) bool {
-	return requestPath == target
-}
-
-func (rc *SlidingWindowLogLimiter) matchRegexPath(requestPath string, target string) bool {
-	r, err := regexp.Compile(target)
-	if err != nil {
-		log.Println("error while compile regex:", err)
-	}
-	return r.MatchString(requestPath)
 }
