@@ -43,7 +43,7 @@ func (l *TokenBucketLimiter) IsTarget(method, requestPath string) (bool, *ApiMat
 		}
 		if result && method == api.Method {
 			return true, &ApiMatchResult{
-				Key:           api.Key,
+				Identifier:    api.Key,
 				Limit:         api.Limit,
 				WindowSeconds: api.WindowSeconds,
 				RefillSeconds: api.RefillSeconds,
@@ -56,7 +56,7 @@ func (l *TokenBucketLimiter) IsTarget(method, requestPath string) (bool, *ApiMat
 }
 
 func (l *TokenBucketLimiter) IsAllowed(ip string, api *ApiMatchResult) (bool, int) {
-	key := l.KeyGenerator.Make(ip, api.Key)
+	key := l.KeyGenerator.Make(ip, api.Identifier)
 	b, err := l.RedisClient.GetObject(key)
 	bb, ok := b.(*bucket.TokenBucket)
 	if !ok {

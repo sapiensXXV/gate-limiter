@@ -35,6 +35,7 @@ type Api struct {
 	WindowSeconds int             `yaml:"windowSeconds"`
 	RefillSeconds int             `yaml:"refillSeconds"`
 	ExpireSeconds int             `yaml:"expireSeconds"`
+	BucketSize    int             `yaml:"bucketSize"`
 	Target        string          `yaml:"target"`
 }
 

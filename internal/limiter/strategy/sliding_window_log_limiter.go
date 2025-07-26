@@ -44,7 +44,7 @@ func (l *SlidingWindowLogLimiter) IsTarget(requestMethod, requestPath string) (b
 		}
 		if result && requestMethod == api.Method {
 			return true, &ApiMatchResult{
-				Key:           api.Key,
+				Identifier:    api.Key,
 				Limit:         api.Limit,
 				WindowSeconds: api.WindowSeconds,
 				Target:        api.Target,
@@ -56,7 +56,7 @@ func (l *SlidingWindowLogLimiter) IsTarget(requestMethod, requestPath string) (b
 
 func (l *SlidingWindowLogLimiter) IsAllowed(ip string, api *ApiMatchResult) (bool, int) {
 	fmt.Printf("ip_address: [%s]를 검사합니다.\n", ip)
-	key := l.KeyGenerator.Make(ip, api.Key)
+	key := l.KeyGenerator.Make(ip, api.Identifier)
 
 	var err error
 	now := time.Now()
