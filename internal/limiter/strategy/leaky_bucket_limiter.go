@@ -63,6 +63,5 @@ func (l *LeakyBucketLimiter) IsAllowed(ip string, api *ApiMatchResult, queuedReq
 	if err != nil {
 		log.Println("Cannot check free space of channel", err)
 	}
-
 	return result, freeSpace
 }

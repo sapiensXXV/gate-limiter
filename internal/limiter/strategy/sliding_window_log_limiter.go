@@ -54,7 +54,7 @@ func (l *SlidingWindowLogLimiter) IsTarget(requestMethod, requestPath string) (b
 	return false, nil
 }
 
-func (l *SlidingWindowLogLimiter) IsAllowed(ip string, api *ApiMatchResult) (bool, int) {
+func (l *SlidingWindowLogLimiter) IsAllowed(ip string, api *ApiMatchResult, _ *QueuedRequest) (bool, int) {
 	fmt.Printf("ip_address: [%s]를 검사합니다.\n", ip)
 	key := l.KeyGenerator.Make(ip, api.Identifier)
 

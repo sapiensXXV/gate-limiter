@@ -31,7 +31,7 @@ func (s *SlidingWindowCounterLimiter) IsTarget(method, url string) (bool, *ApiMa
 	panic("implement me")
 }
 
-func (s *SlidingWindowCounterLimiter) IsAllowed(ip string, api *ApiMatchResult) (bool, int) {
+func (s *SlidingWindowCounterLimiter) IsAllowed(ip string, api *ApiMatchResult, _ *QueuedRequest) (bool, int) {
 	//TODO implement me
 	panic("implement me")
 }
