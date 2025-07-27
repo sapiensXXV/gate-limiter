@@ -1,7 +1,7 @@
 package limiter
 
 import (
-	config_ratelimiter "gate-limiter/config/ratelimiter"
+	config_ratelimiter "gate-limiter/config/limiterconfig"
 	"gate-limiter/internal/limiter/strategy"
 	"net/http"
 )

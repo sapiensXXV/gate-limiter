@@ -1,7 +1,7 @@
 package strategy
 
 import (
-	config_ratelimiter "gate-limiter/config/ratelimiter"
+	config_ratelimiter "gate-limiter/config/limiterconfig"
 	"gate-limiter/internal/limiter/bucket"
 	"gate-limiter/internal/limiter/limiterutil"
 	"gate-limiter/pkg/redisclient"
