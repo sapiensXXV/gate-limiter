@@ -2,7 +2,7 @@ package strategy
 
 type RateLimiter interface {
 	IsTarget(method, requestPath string) (bool, *ApiMatchResult)
-	IsAllowed(ip string, api *ApiMatchResult) (bool, int)
+	IsAllowed(ip string, api *ApiMatchResult, queuedRequest *QueuedRequest) (bool, int)
 }
 
 type PathMatcher interface {

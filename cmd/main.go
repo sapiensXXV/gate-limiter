@@ -32,12 +32,12 @@ func main() {
 	redisclient.InitRedis()
 
 	// handler
-	limitHandler, err := app.InitRateLimitHandler()
+	limitHandler, err := app.InitRateLimitHandler() // 초기화가 이루어지는 시점
 	if err != nil {
 		log.Fatal("Error initializing rate limiter handler", err)
 	}
 	http.Handle("/", limitHandler)
-	err = http.ListenAndServe(":8081", nil)
+	err = http.ListenAndServe(":8081", limitHandler) // 사용자의 요청을 받기 시작하는 지점
 
 	if errors.Is(err, http.ErrServerClosed) {
 		log.Println("server closed\n")

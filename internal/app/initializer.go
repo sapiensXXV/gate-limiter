@@ -9,9 +9,13 @@ import (
 	"gate-limiter/internal/limiter/strategy"
 	"gate-limiter/pkg/redisclient"
 	"log"
+	"net/http"
 )
 
-func InitRateLimitHandler() (*limiter.RateLimitHandler, error) {
+func InitRateLimitHandler(
+	w http.ResponseWriter,
+
+) (*limiter.RateLimitHandler, error) {
 
 	// Load config.yml
 	rlc, err := config_ratelimiter.LoadRateLimitConfig("config.yml")
@@ -29,7 +33,22 @@ func InitRateLimitHandler() (*limiter.RateLimitHandler, error) {
 	responder := limiter.NewHttpLimitResponder(nil, redisClient, keyGenerator, config)
 	proxy := limiter.NewDefaultProxyHandler()
 
-	rl := strategy.Strategies[config.Strategy](keyGenerator, redisClient, config)
+	//rl := strategy.Strategies[config.Strategy](keyGenerator, redisClient, config)
+
+	var rl strategy.RateLimiter
+	switch config.Strategy {
+	case "token_bucket":
+		rl = strategy.NewTokenBucketLimiter(keyGenerator, redisClient, config)
+	case "leaky_bucket":
+		leakyBucketManager := strategy.NewLeakyBucketManager(proxy)
+		rl = strategy.NewLeakyBucketLimiter(keyGenerator, redisClient, config, leakyBucketManager, nil)
+	case "fixed_window_counter":
+		rl = strategy.NewFixedWindowCounterLimiter(keyGenerator, redisClient, config)
+	case "sliding_window_log":
+		rl = strategy.NewSlidingWindowLogLimiter(keyGenerator, redisClient, config)
+	case "sliding_window_counter":
+	default:
+	}
 
 	return limiter.NewRateLimitHandler(rl, proxy, responder, config), nil
 }

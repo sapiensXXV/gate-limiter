@@ -3,7 +3,6 @@ package limiter
 import (
 	config_ratelimiter "gate-limiter/config/ratelimiter"
 	"gate-limiter/internal/limiter/strategy"
-	"log"
 	"net/http"
 )
 
@@ -20,13 +19,13 @@ type RateLimitHandler struct {
 var _ http.Handler = (*RateLimitHandler)(nil)
 
 func NewRateLimitHandler(
-	matcher strategy.RateLimiter,
+	limiter strategy.RateLimiter,
 	proxy ProxyHandler,
 	responder LimitResponder,
 	config config_ratelimiter.RateLimiterConfig,
 ) *RateLimitHandler {
 	return &RateLimitHandler{
-		Limiter:   matcher,
+		Limiter:   limiter,
 		Proxy:     proxy,
 		Responder: responder,
 		Config:    config,
@@ -37,17 +36,28 @@ func (h *RateLimitHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	isTarget, api := h.Limiter.IsTarget(r.Method, r.URL.String())
 
 	if !isTarget {
-		//log.Printf("[%s] url_path:[%s] 는 검사 대상이 아닙니다.", r.Method, r.URL.Path)
 		h.Proxy.ToOrigin(w, r, api.Target)
 		return
 	}
 
-	//log.Printf("[%s] url_path:[%s] 는 검사 대상입니다.", r.Method, r.URL.Path)
-	allowed, remaining := h.Limiter.IsAllowed(r.Header.Get(h.Config.Identity.Header), api)
-	if !allowed {
-		log.Printf("[%s] url_path:[%s] 는 허용치를 초과하였습니다.", r.Method, r.URL.Path)
-		h.Responder.RespondRateLimitExceeded(w, r, remaining)
-		return
+	var queued *strategy.QueuedRequest
+	if h.Config.Strategy == "leaky_bucket" {
+		// leaky_bucket 알고리즘을 사용하는 경우 현재 요청/응답 정보를 큐에 넘겨야한다.
+		queued = &strategy.QueuedRequest{
+			Writer:  w,
+			Request: r,
+		}
+		if ll, ok := h.Limiter.(*strategy.LeakyBucketLimiter); ok {
+			ll.IsAllowed(r.Header.Get(h.Config.Identity.Header), api, queued)
+		}
+	} else {
+		// token_bucket, sliding_window_log, sliding_window_counter
+		// 다른 알고리즘의 경우에는 QueuedRequest를 사용하지 않는다.
+		allowed, remaining := h.Limiter.IsAllowed(r.Header.Get(h.Config.Identity.Header), api, nil)
+		if !allowed {
+			h.Responder.RespondRateLimitExceeded(w, r, remaining)
+			return
+		}
 	}
 
 	h.Proxy.ToOrigin(w, r, api.Target)
