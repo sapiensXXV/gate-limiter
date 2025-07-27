@@ -19,8 +19,8 @@ func NewDefaultProxyHandler() *DefaultProxyHandler {
 	return &DefaultProxyHandler{}
 }
 
-func (dph *DefaultProxyHandler) ToOrigin(w http.ResponseWriter, r *http.Request) {
-	target, err := url.Parse("https://gongnomok.com")
+func (dph *DefaultProxyHandler) ToOrigin(w http.ResponseWriter, r *http.Request, origin string) {
+	target, err := url.Parse(origin)
 	if err != nil {
 		http.Error(w, "Bad Gateway", http.StatusBadGateway)
 		return
