@@ -44,7 +44,7 @@ func (l *LeakyBucketLimiter) IsTarget(method, url string) (bool, *ApiMatchResult
 		}
 		if isPathMatch && method == api.Method {
 			return true, &ApiMatchResult{
-				Identifier: api.Key,
+				Identifier: api.Identifier,
 				Limit:      api.Limit,
 				BucketSize: api.BucketSize,
 				Target:     api.Target,

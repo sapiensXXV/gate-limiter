@@ -43,7 +43,7 @@ func (l *TokenBucketLimiter) IsTarget(method, requestPath string) (bool, *ApiMat
 		}
 		if result && method == api.Method {
 			return true, &ApiMatchResult{
-				Identifier:    api.Key,
+				Identifier:    api.Identifier,
 				Limit:         api.Limit,
 				WindowSeconds: api.WindowSeconds,
 				RefillSeconds: api.RefillSeconds,

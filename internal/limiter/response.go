@@ -53,7 +53,7 @@ func (h *HttpLimitResponder) RespondRateLimitExceeded(
 	ipAddress := r.Header.Get(h.Config.Identity.Header)
 	// TODO Apis에 수동으로 인덱스를 주어야하는가? 설정한 목록대로 다 처리하려면 결국 반복문을 돌면서 ResponseRateLimitExceeded 메서드를 호출해야하는데
 	// 매개변수로 key, allow_count, header를 다 받아야하나? 그건 좀 에반데.
-	key := h.KeyGenerator.Make(ipAddress, h.Config.Apis[0].Key)
+	key := h.KeyGenerator.Make(ipAddress, h.Config.Apis[0].Identifier)
 	retryAfter := h.CalcRetryAfter(key)
 
 	w.Header().Set(XRateLimitRemaining, strconv.Itoa(remaining))

@@ -44,7 +44,7 @@ func (l *SlidingWindowLogLimiter) IsTarget(requestMethod, requestPath string) (b
 		}
 		if result && requestMethod == api.Method {
 			return true, &ApiMatchResult{
-				Identifier:    api.Key,
+				Identifier:    api.Identifier,
 				Limit:         api.Limit,
 				WindowSeconds: api.WindowSeconds,
 				Target:        api.Target,

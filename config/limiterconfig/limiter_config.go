@@ -28,7 +28,7 @@ type ClientLimit struct {
 }
 
 type Api struct {
-	Key           string          `yaml:"key"`
+	Identifier    string          `yaml:"identifier"`
 	Path          RateLimiterPath `yaml:"path"`
 	Method        string          `yaml:"method"`
 	Limit         int             `yaml:"limit"`
