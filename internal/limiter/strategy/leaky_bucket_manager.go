@@ -4,6 +4,7 @@ import (
 	"fmt"
 	config_ratelimiter "gate-limiter/config/limiterconfig"
 	"gate-limiter/internal/limiter"
+	"log"
 	"net/http"
 	"sync"
 	"time"
@@ -34,7 +35,7 @@ func NewLeakyBucketManager(handler limiter.ProxyHandler, apis []config_ratelimit
 	// 맵 초기화
 	for _, api := range apis {
 		m.buckets[api.Identifier] = make(map[string]*LeakyBucket)
-		go m.StartScheduling(api) // 스케줄링 시작
+		go m.startScheduling(api) // 스케줄링 시작
 	}
 
 	return m
@@ -72,24 +73,34 @@ func (m *LeakyBucketManager) CountBucketFreeCapacity(apiIdentifier string, key s
 	return cap(bucket.queue) - len(bucket.queue), nil
 }
 
-func (m *LeakyBucketManager) StartScheduling(api config_ratelimiter.Api) {
+func (m *LeakyBucketManager) startScheduling(api config_ratelimiter.Api) {
 	ticker := time.NewTicker(time.Duration(api.WindowSeconds) * time.Second)
+	log.Printf("%s Ticker Start\n", api.Identifier)
 	defer ticker.Stop() // for range ticker.C가 끝나지 않는 이상 함수가 리턴되지 않으니 Stop은 프로그램종료전까지는 절대 호출되지 않는다.
 
 	// TODO 중첩 for 문으로부터 해방될 방법은 없는가
 	for range ticker.C {
+		log.Printf("%s_bucket 검사\n", api.Identifier)
+		// 락 적용위치 최소화를 위해
 		m.mu.Lock()
-		for _, bucket := range m.buckets[api.Identifier] {
+		buckets := make([]*LeakyBucket, 0, len(m.buckets[api.Identifier]))
+		for _, b := range m.buckets[api.Identifier] {
+			buckets = append(buckets, b)
+		}
+		m.mu.Unlock()
+
+		// 락을 풀고 실제 요청 처리
+		for _, bucket := range buckets {
+		drain:
 			for {
 				select {
 				case req := <-bucket.queue:
 					m.handler.ToOrigin(req.Writer, req.Request, api.Target)
 				default:
-					break
+					break drain
 				}
 			}
 		}
 
-		m.mu.Unlock()
 	}
 }

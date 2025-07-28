@@ -43,9 +43,8 @@ func initRateLimiter(
 	case "token_bucket":
 		rl = strategy.NewTokenBucketLimiter(keyGenerator, *redisClient, *config)
 	case "leaky_bucket":
-		leakyBucketManager := strategy.NewLeakyBucketManager(proxy)
-		leakyBucketManager.StartScheduling(config.Apis = strategy.NewLeakyBucketLimiter(keyGenerator, *redisClient, *config, l)
-		rleakyBucketManager)
+		leakyBucketManager := strategy.NewLeakyBucketManager(proxy, config.Apis)
+		rl = strategy.NewLeakyBucketLimiter(*config, leakyBucketManager)
 	case "fixed_window_counter":
 		rl = strategy.NewFixedWindowCounterLimiter(keyGenerator, *redisClient, *config)
 	case "sliding_window_log":
