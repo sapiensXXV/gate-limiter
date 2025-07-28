@@ -1,4 +1,4 @@
-package limiterconfig
+package settings
 
 import (
 	"gopkg.in/yaml.v3"

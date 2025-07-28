@@ -18,4 +18,5 @@ type ApiMatchResult struct {
 	ExpireSeconds int
 	RefillSeconds int
 	BucketSize    int
+	Target        string
 }

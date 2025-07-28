@@ -1,7 +1,7 @@
 package strategy
 
 import (
-	config_ratelimiter "gate-limiter/config/limiterconfig"
+	"gate-limiter/config/settings"
 	"gate-limiter/internal/limiter/bucket"
 	"gate-limiter/internal/limiter/limiterutil"
 	"gate-limiter/pkg/redisclient"
@@ -13,7 +13,7 @@ import (
 type TokenBucketLimiter struct {
 	KeyGenerator limiterutil.KeyGenerator
 	RedisClient  redisclient.RedisClient
-	Config       config_ratelimiter.RateLimiterConfig
+	Config       settings.RateLimiterConfig
 }
 
 var _ RateLimiter = (*TokenBucketLimiter)(nil)
@@ -21,7 +21,7 @@ var _ RateLimiter = (*TokenBucketLimiter)(nil)
 func NewTokenBucketLimiter(
 	keyGenerator limiterutil.KeyGenerator,
 	redisClient redisclient.RedisClient,
-	config config_ratelimiter.RateLimiterConfig,
+	config settings.RateLimiterConfig,
 ) RateLimiter {
 	h := &TokenBucketLimiter{}
 	h.KeyGenerator = keyGenerator
@@ -55,7 +55,7 @@ func (l *TokenBucketLimiter) IsTarget(method, requestPath string) (bool, *ApiMat
 	return false, nil
 }
 
-func (l *TokenBucketLimiter) IsAllowed(ip string, api *ApiMatchResult) (bool, int) {
+func (l *TokenBucketLimiter) IsAllowed(ip string, api *ApiMatchResult, _ *QueuedRequest) (bool, int) {
 	key := l.KeyGenerator.Make(ip, api.Identifier)
 	b, err := l.RedisClient.GetObject(key)
 	bb, ok := b.(*bucket.TokenBucket)

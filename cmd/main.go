@@ -2,7 +2,7 @@ package main
 
 import (
 	"errors"
-	config_ratelimiter "gate-limiter/config/limiterconfig"
+	config_ratelimiter "gate-limiter/config/settings"
 	"gate-limiter/internal/app"
 	"gate-limiter/pkg/redisclient"
 	"github.com/joho/godotenv"

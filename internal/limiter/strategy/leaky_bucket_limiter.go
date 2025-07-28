@@ -1,20 +1,20 @@
 package strategy
 
 import (
-	config_ratelimiter "gate-limiter/config/limiterconfig"
+	"gate-limiter/config/settings"
 	"gate-limiter/internal/limiter/limiterutil"
 	"log"
 )
 
 type LeakyBucketLimiter struct {
-	Config  config_ratelimiter.RateLimiterConfig
+	Config  settings.RateLimiterConfig
 	Manager *LeakyBucketManager
 }
 
 var _ RateLimiter = (*LeakyBucketLimiter)(nil)
 
 func NewLeakyBucketLimiter(
-	config config_ratelimiter.RateLimiterConfig,
+	config settings.RateLimiterConfig,
 	manager *LeakyBucketManager,
 ) RateLimiter {
 	h := &LeakyBucketLimiter{}
@@ -40,6 +40,7 @@ func (l *LeakyBucketLimiter) IsTarget(method, url string) (bool, *ApiMatchResult
 				Identifier: api.Identifier,
 				Limit:      api.Limit,
 				BucketSize: api.BucketSize,
+				Target:     api.Target,
 			}
 		}
 	}

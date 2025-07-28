@@ -1,7 +1,7 @@
 package app
 
 import (
-	"gate-limiter/config/limiterconfig"
+	"gate-limiter/config/settings"
 	"gate-limiter/internal/limiter"
 	"gate-limiter/internal/limiter/limiterutil"
 	"gate-limiter/internal/limiter/strategy"
@@ -10,7 +10,7 @@ import (
 )
 
 func InitRateLimitHandler() (*limiter.RateLimitHandler, error) {
-	var config limiterconfig.RateLimiterConfig
+	var config settings.RateLimiterConfig
 	config = initConfig()
 
 	redisClient := NewRedisClient()
@@ -24,8 +24,8 @@ func InitRateLimitHandler() (*limiter.RateLimitHandler, error) {
 	return limiter.NewRateLimitHandler(rl, proxy, responder, config), nil
 }
 
-func initConfig() limiterconfig.RateLimiterConfig {
-	rlc, err := limiterconfig.LoadRateLimitConfig("config.yml") // Load config.yml
+func initConfig() settings.RateLimiterConfig {
+	rlc, err := settings.LoadRateLimitConfig("config.yml") // Load config.yml
 	if err != nil {
 		log.Printf("error occur while loading config.yml: %v\n", err)
 	}
@@ -33,7 +33,7 @@ func initConfig() limiterconfig.RateLimiterConfig {
 }
 
 func initRateLimiter(
-	config *limiterconfig.RateLimiterConfig,
+	config *settings.RateLimiterConfig,
 	keyGenerator *limiterutil.IpKeyGenerator,
 	redisClient *redisclient.RedisClient,
 	proxy *limiter.DefaultProxyHandler,
@@ -55,7 +55,7 @@ func initRateLimiter(
 	return rl
 }
 
-func NewKeyGenerator(config limiterconfig.RateLimiterConfig) *limiterutil.IpKeyGenerator {
+func NewKeyGenerator(config settings.RateLimiterConfig) *limiterutil.IpKeyGenerator {
 	identity := config.Identity
 	if identity.Key == "ipv4" {
 		return limiterutil.NewIpKeyGenerator()

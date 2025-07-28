@@ -1,7 +1,7 @@
 package strategy
 
 import (
-	config_ratelimiter "gate-limiter/config/limiterconfig"
+	"gate-limiter/config/settings"
 	"gate-limiter/internal/limiter/limiterutil"
 	"gate-limiter/pkg/redisclient"
 )
@@ -9,7 +9,7 @@ import (
 type FixedWindowCounterLimiter struct {
 	KeyGenerator limiterutil.KeyGenerator
 	RedisClient  redisclient.RedisClient
-	Config       config_ratelimiter.RateLimiterConfig
+	Config       settings.RateLimiterConfig
 }
 
 var _ RateLimiter = (*FixedWindowCounterLimiter)(nil)
@@ -17,7 +17,7 @@ var _ RateLimiter = (*FixedWindowCounterLimiter)(nil)
 func NewFixedWindowCounterLimiter(
 	keyGenerator limiterutil.KeyGenerator,
 	redisClient redisclient.RedisClient,
-	config config_ratelimiter.RateLimiterConfig,
+	config settings.RateLimiterConfig,
 ) RateLimiter {
 	return &FixedWindowCounterLimiter{
 		KeyGenerator: keyGenerator,

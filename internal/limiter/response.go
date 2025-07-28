@@ -1,7 +1,7 @@
 package limiter
 
 import (
-	config_ratelimiter "gate-limiter/config/limiterconfig"
+	config_ratelimiter "gate-limiter/config/settings"
 	"gate-limiter/internal/limiter/limiterutil"
 	"gate-limiter/pkg/redisclient"
 	"log"

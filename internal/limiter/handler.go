@@ -1,7 +1,7 @@
 package limiter
 
 import (
-	configratelimiter "gate-limiter/config/limiterconfig"
+	"gate-limiter/config/settings"
 	"gate-limiter/internal/limiter/strategy"
 	"net/http"
 )
@@ -13,7 +13,7 @@ type RateLimitHandler struct {
 	Limiter   strategy.RateLimiter
 	Proxy     ProxyHandler
 	Responder LimitResponder
-	Config    configratelimiter.RateLimiterConfig
+	Config    settings.RateLimiterConfig
 }
 
 var _ http.Handler = (*RateLimitHandler)(nil)
@@ -22,7 +22,7 @@ func NewRateLimitHandler(
 	limiter strategy.RateLimiter,
 	proxy ProxyHandler,
 	responder LimitResponder,
-	config configratelimiter.RateLimiterConfig,
+	config settings.RateLimiterConfig,
 ) *RateLimitHandler {
 	return &RateLimitHandler{
 		Limiter:   limiter,

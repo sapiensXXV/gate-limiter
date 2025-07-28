@@ -2,7 +2,7 @@ package strategy
 
 import (
 	"fmt"
-	config_ratelimiter "gate-limiter/config/limiterconfig"
+	"gate-limiter/config/settings"
 	"gate-limiter/internal/limiter"
 	"log"
 	"net/http"
@@ -24,10 +24,10 @@ type LeakyBucketManager struct {
 	buckets map[string]map[string]*LeakyBucket // api_id -> ip_address -> bucket
 	mu      sync.Mutex
 	handler limiter.ProxyHandler
-	config  config_ratelimiter.Api
+	config  settings.Api
 }
 
-func NewLeakyBucketManager(handler limiter.ProxyHandler, apis []config_ratelimiter.Api) *LeakyBucketManager {
+func NewLeakyBucketManager(handler limiter.ProxyHandler, apis []settings.Api) *LeakyBucketManager {
 	m := &LeakyBucketManager{
 		buckets: make(map[string]map[string]*LeakyBucket),
 		handler: handler,
