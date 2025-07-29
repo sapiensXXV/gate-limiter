@@ -2,23 +2,24 @@ package strategy
 
 import (
 	"gate-limiter/config/settings"
-	"gate-limiter/internal/limiter/limiterutil"
+	"gate-limiter/internal/limiter/types"
+	"gate-limiter/internal/limiter/util"
 	"gate-limiter/pkg/redisclient"
 )
 
 type FixedWindowCounterLimiter struct {
-	KeyGenerator limiterutil.KeyGenerator
+	KeyGenerator util.KeyGenerator
 	RedisClient  redisclient.RedisClient
 	Config       settings.RateLimiterConfig
 }
 
-var _ RateLimiter = (*FixedWindowCounterLimiter)(nil)
+var _ types.RateLimiter = (*FixedWindowCounterLimiter)(nil)
 
 func NewFixedWindowCounterLimiter(
-	keyGenerator limiterutil.KeyGenerator,
+	keyGenerator util.KeyGenerator,
 	redisClient redisclient.RedisClient,
 	config settings.RateLimiterConfig,
-) RateLimiter {
+) types.RateLimiter {
 	return &FixedWindowCounterLimiter{
 		KeyGenerator: keyGenerator,
 		RedisClient:  redisClient,
@@ -26,12 +27,12 @@ func NewFixedWindowCounterLimiter(
 	}
 }
 
-func (f *FixedWindowCounterLimiter) IsTarget(method, url string) (bool, *ApiMatchResult) {
+func (f *FixedWindowCounterLimiter) IsTarget(method, url string) (bool, *types.ApiMatchResult) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (f *FixedWindowCounterLimiter) IsAllowed(ip string, api *ApiMatchResult, _ *QueuedRequest) (bool, int) {
+func (f *FixedWindowCounterLimiter) IsAllowed(ip string, api *types.ApiMatchResult, _ *types.QueuedRequest) (bool, int) {
 	//TODO implement me
 	panic("implement me")
 }

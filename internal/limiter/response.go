@@ -2,7 +2,7 @@ package limiter
 
 import (
 	config_ratelimiter "gate-limiter/config/settings"
-	"gate-limiter/internal/limiter/limiterutil"
+	"gate-limiter/internal/limiter/util"
 	"gate-limiter/pkg/redisclient"
 	"log"
 	"net/http"
@@ -23,14 +23,14 @@ type LimitResponder interface {
 type HttpLimitResponder struct {
 	CalcRetryAfter func(key string) int
 	RedisClient    redisclient.RedisClient
-	KeyGenerator   limiterutil.KeyGenerator
+	KeyGenerator   util.KeyGenerator
 	Config         config_ratelimiter.RateLimiterConfig
 }
 
 func NewHttpLimitResponder(
 	calcRetryAfter func(key string) int,
 	redisClient redisclient.RedisClient,
-	keyGenerator limiterutil.KeyGenerator,
+	keyGenerator util.KeyGenerator,
 	config config_ratelimiter.RateLimiterConfig,
 ) *HttpLimitResponder {
 	h := &HttpLimitResponder{}

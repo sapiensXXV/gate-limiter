@@ -3,25 +3,26 @@ package strategy
 import (
 	"fmt"
 	"gate-limiter/config/settings"
-	"gate-limiter/internal/limiter/limiterutil"
+	"gate-limiter/internal/limiter/types"
+	"gate-limiter/internal/limiter/util"
 	"gate-limiter/pkg/redisclient"
 	"log"
 	"time"
 )
 
 type SlidingWindowLogLimiter struct {
-	KeyGenerator limiterutil.KeyGenerator
+	KeyGenerator util.KeyGenerator
 	RedisClient  redisclient.RedisClient
 	Config       settings.RateLimiterConfig
 }
 
-var _ RateLimiter = (*SlidingWindowLogLimiter)(nil)
+var _ types.RateLimiter = (*SlidingWindowLogLimiter)(nil)
 
 func NewSlidingWindowLogLimiter(
-	keyGenerator limiterutil.KeyGenerator,
+	keyGenerator util.KeyGenerator,
 	redisClient redisclient.RedisClient,
 	config settings.RateLimiterConfig,
-) RateLimiter {
+) types.RateLimiter {
 	h := &SlidingWindowLogLimiter{}
 	h.KeyGenerator = keyGenerator
 	h.RedisClient = redisClient
@@ -29,7 +30,7 @@ func NewSlidingWindowLogLimiter(
 	return h
 }
 
-func (l *SlidingWindowLogLimiter) IsTarget(requestMethod, requestPath string) (bool, *ApiMatchResult) {
+func (l *SlidingWindowLogLimiter) IsTarget(requestMethod, requestPath string) (bool, *types.ApiMatchResult) {
 	// 경로와 HTTP 메서드가 둘다 일치해야 제한 대상으로 판명
 	apis := l.Config.Apis
 	for _, api := range apis {
@@ -38,12 +39,12 @@ func (l *SlidingWindowLogLimiter) IsTarget(requestMethod, requestPath string) (b
 		var result bool
 		// 경로 표현 방식에 따라 경로 매칭 방식 결정
 		if pathExpression == regex {
-			result = limiterutil.MatchRegex(requestPath, targetPath)
+			result = util.MatchRegex(requestPath, targetPath)
 		} else if pathExpression == plain {
-			result = limiterutil.MatchPlain(requestPath, targetPath)
+			result = util.MatchPlain(requestPath, targetPath)
 		}
 		if result && requestMethod == api.Method {
-			return true, &ApiMatchResult{
+			return true, &types.ApiMatchResult{
 				Identifier:    api.Identifier,
 				Limit:         api.Limit,
 				WindowSeconds: api.WindowSeconds,
@@ -54,7 +55,7 @@ func (l *SlidingWindowLogLimiter) IsTarget(requestMethod, requestPath string) (b
 	return false, nil
 }
 
-func (l *SlidingWindowLogLimiter) IsAllowed(ip string, api *ApiMatchResult, _ *QueuedRequest) (bool, int) {
+func (l *SlidingWindowLogLimiter) IsAllowed(ip string, api *types.ApiMatchResult, _ *types.QueuedRequest) (bool, int) {
 	fmt.Printf("ip_address: [%s]를 검사합니다.\n", ip)
 	key := l.KeyGenerator.Make(ip, api.Identifier)
 

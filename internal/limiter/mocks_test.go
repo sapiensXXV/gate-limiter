@@ -2,9 +2,8 @@ package limiter
 
 import (
 	"errors"
-	"gate-limiter/internal/limiter/limiterutil"
+	"gate-limiter/internal/limiter/util"
 	"gate-limiter/pkg/redisclient"
-	"github.com/redis/go-redis/v9"
 	"net/http"
 	"strconv"
 	"time"
@@ -31,8 +30,8 @@ func (m *MockRedisClient) GetZSetSize(key string) int {
 	return m.size
 }
 
-func (m *MockRedisClient) GetOldestEntry(key string) (redis.Z, error) {
-	return redis.Z{}, errors.New("not implemented")
+func (m *MockRedisClient) GetOldestEntry(key string) (redisclient.Z, error) {
+	return redisclient.Z{}, errors.New("not implemented")
 }
 
 func (m *MockRedisClient) RemoveOldEntry(key string, before time.Time) error {
@@ -48,7 +47,7 @@ func NewMockRedisClient() *MockRedisClient {
 // ==================================================
 type MockKeyGenerator struct{}
 
-var _ limiterutil.KeyGenerator = (*MockKeyGenerator)(nil)
+var _ util.KeyGenerator = (*MockKeyGenerator)(nil)
 
 func (m *MockKeyGenerator) Make(identifier string, category string) string {
 	return identifier + ":" + category
@@ -64,7 +63,7 @@ func NewMockKeyGenerator() *MockKeyGenerator {
 type MockHttpLimitFailureResponder struct {
 	CalcRetryAfter func(key string) int
 	RedisClient    redisclient.RedisClient
-	KeyGenerator   limiterutil.KeyGenerator
+	KeyGenerator   util.KeyGenerator
 }
 
 var _ LimitResponder = (*MockHttpLimitFailureResponder)(nil)

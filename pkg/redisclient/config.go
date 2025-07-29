@@ -25,8 +25,8 @@ func InitRedis() {
 	})
 
 	if err := Rdb.Ping(ctx).Err(); err != nil {
-		fmt.Println("redis connection fail", err)
+		fmt.Println("redisclient connection fail", err)
 	} else {
-		fmt.Println("redis connection success")
+		fmt.Println("redisclient connection success")
 	}
 }

@@ -1,4 +1,4 @@
-package limiterutil
+package util
 
 type KeyGenerator interface {
 	Make(address string, identifier string) string

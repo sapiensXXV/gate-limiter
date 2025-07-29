@@ -1,9 +1,10 @@
 package strategy
 
 import (
+	"errors"
 	"gate-limiter/config/settings"
-	"gate-limiter/internal/limiter/bucket"
-	"gate-limiter/internal/limiter/limiterutil"
+	"gate-limiter/internal/limiter/types"
+	"gate-limiter/internal/limiter/util"
 	"gate-limiter/pkg/redisclient"
 	"github.com/redis/go-redis/v9"
 	"log"
@@ -11,18 +12,18 @@ import (
 )
 
 type TokenBucketLimiter struct {
-	KeyGenerator limiterutil.KeyGenerator
+	KeyGenerator util.KeyGenerator
 	RedisClient  redisclient.RedisClient
 	Config       settings.RateLimiterConfig
 }
 
-var _ RateLimiter = (*TokenBucketLimiter)(nil)
+var _ types.RateLimiter = (*TokenBucketLimiter)(nil)
 
 func NewTokenBucketLimiter(
-	keyGenerator limiterutil.KeyGenerator,
+	keyGenerator util.KeyGenerator,
 	redisClient redisclient.RedisClient,
 	config settings.RateLimiterConfig,
-) RateLimiter {
+) types.RateLimiter {
 	h := &TokenBucketLimiter{}
 	h.KeyGenerator = keyGenerator
 	h.RedisClient = redisClient
@@ -30,19 +31,19 @@ func NewTokenBucketLimiter(
 	return h
 }
 
-func (l *TokenBucketLimiter) IsTarget(method, requestPath string) (bool, *ApiMatchResult) {
+func (l *TokenBucketLimiter) IsTarget(method, requestPath string) (bool, *types.ApiMatchResult) {
 	apis := l.Config.Apis
 	for _, api := range apis {
 		pathExpression := api.Path.Expression
 		targetPath := api.Path.Value
 		var result bool
 		if pathExpression == regex {
-			result = limiterutil.MatchRegex(requestPath, targetPath)
+			result = util.MatchRegex(requestPath, targetPath)
 		} else if pathExpression == plain {
-			result = limiterutil.MatchPlain(requestPath, targetPath)
+			result = util.MatchPlain(requestPath, targetPath)
 		}
 		if result && method == api.Method {
-			return true, &ApiMatchResult{
+			return true, &types.ApiMatchResult{
 				Identifier:    api.Identifier,
 				Limit:         api.Limit,
 				WindowSeconds: api.WindowSeconds,
@@ -55,27 +56,27 @@ func (l *TokenBucketLimiter) IsTarget(method, requestPath string) (bool, *ApiMat
 	return false, nil
 }
 
-func (l *TokenBucketLimiter) IsAllowed(ip string, api *ApiMatchResult, _ *QueuedRequest) (bool, int) {
+func (l *TokenBucketLimiter) IsAllowed(ip string, api *types.ApiMatchResult, _ *types.QueuedRequest) (bool, int) {
 	key := l.KeyGenerator.Make(ip, api.Identifier)
 	b, err := l.RedisClient.GetObject(key)
-	bb, ok := b.(*bucket.TokenBucket)
+	bb, ok := b.(*types.TokenBucket)
 	if !ok {
 		log.Println("Invalid type assertion for key [%s]", key)
 		return false, 0
 	}
-	if err == redis.Nil {
+	if errors.Is(err, redis.Nil) {
 		// 버킷이 없는 경우 새로운 버킷을 만들고 마지막 토큰 리필 시간을 현재로 설정한다.
-		newBucket := bucket.NewTokenBucket(api.Limit)
+		newBucket := types.NewTokenBucket(api.Limit)
 		newBucket.LastRefillTime = time.Now()
 		newBucket.Token-- // 토큰 한개 소비
 		if err := l.RedisClient.SetObject(key, newBucket, api.ExpireSeconds); err != nil {
-			log.Printf("redis value setting error: key=[%s], value=[%s], err=%v", key, newBucket, err)
+			log.Printf("redisclient value setting error: key=[%s], value=[%s], err=%v", key, newBucket, err)
 			return false, 0
 		}
 		return true, newBucket.Token
 
 	} else if err != nil {
-		log.Printf("redis Get error key:[%s]\n, err:%v\n", key, err)
+		log.Printf("redisclient Get error key:[%s]\n, err:%v\n", key, err)
 		return false, 0
 	}
 
@@ -97,7 +98,7 @@ func (l *TokenBucketLimiter) IsAllowed(ip string, api *ApiMatchResult, _ *Queued
 	return false, 0 // 토큰이 없는 경우 요청을 거부한다.
 }
 
-func refillTokenIfNeeded(b *bucket.TokenBucket, limit int, refillSeconds int) {
+func refillTokenIfNeeded(b *types.TokenBucket, limit int, refillSeconds int) {
 	if time.Since(b.LastRefillTime).Seconds() > float64(refillSeconds) {
 		b.Token = limit
 		b.LastRefillTime = time.Now()

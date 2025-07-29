@@ -1,4 +1,4 @@
-package limiterutil
+package util
 
 import (
 	"log"

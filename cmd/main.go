@@ -28,7 +28,7 @@ func main() {
 	log.Println(rlc.RateLimiter.Client)
 	log.Println(rlc.RateLimiter.Apis)
 
-	// redis initialization
+	// redisclient initialization
 	redisclient.InitRedis()
 
 	// handler

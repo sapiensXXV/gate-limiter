@@ -3,8 +3,9 @@ package app
 import (
 	"gate-limiter/config/settings"
 	"gate-limiter/internal/limiter"
-	"gate-limiter/internal/limiter/limiterutil"
 	"gate-limiter/internal/limiter/strategy"
+	"gate-limiter/internal/limiter/types"
+	"gate-limiter/internal/limiter/util"
 	"gate-limiter/pkg/redisclient"
 	"log"
 )
@@ -34,11 +35,11 @@ func initConfig() settings.RateLimiterConfig {
 
 func initRateLimiter(
 	config *settings.RateLimiterConfig,
-	keyGenerator *limiterutil.IpKeyGenerator,
+	keyGenerator *util.IpKeyGenerator,
 	redisClient *redisclient.RedisClient,
 	proxy *limiter.DefaultProxyHandler,
-) strategy.RateLimiter {
-	var rl strategy.RateLimiter
+) types.RateLimiter {
+	var rl types.RateLimiter
 	switch config.Strategy {
 	case "token_bucket":
 		rl = strategy.NewTokenBucketLimiter(keyGenerator, *redisClient, *config)
@@ -55,10 +56,10 @@ func initRateLimiter(
 	return rl
 }
 
-func NewKeyGenerator(config settings.RateLimiterConfig) *limiterutil.IpKeyGenerator {
+func NewKeyGenerator(config settings.RateLimiterConfig) *util.IpKeyGenerator {
 	identity := config.Identity
 	if identity.Key == "ipv4" {
-		return limiterutil.NewIpKeyGenerator()
+		return util.NewIpKeyGenerator()
 	}
 	log.Printf("[ERROR] Wrong identity key value")
 	return nil

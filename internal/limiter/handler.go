@@ -3,6 +3,7 @@ package limiter
 import (
 	"gate-limiter/config/settings"
 	"gate-limiter/internal/limiter/strategy"
+	"gate-limiter/internal/limiter/types"
 	"net/http"
 )
 
@@ -10,8 +11,8 @@ const XForwardedFor = "X-Forwarded-For"
 const AllowedCount = 5
 
 type RateLimitHandler struct {
-	Limiter   strategy.RateLimiter
-	Proxy     ProxyHandler
+	Limiter   types.RateLimiter
+	Proxy     types.ProxyHandler
 	Responder LimitResponder
 	Config    settings.RateLimiterConfig
 }
@@ -19,8 +20,8 @@ type RateLimitHandler struct {
 var _ http.Handler = (*RateLimitHandler)(nil)
 
 func NewRateLimitHandler(
-	limiter strategy.RateLimiter,
-	proxy ProxyHandler,
+	limiter types.RateLimiter,
+	proxy types.ProxyHandler,
 	responder LimitResponder,
 	config settings.RateLimiterConfig,
 ) *RateLimitHandler {
@@ -40,10 +41,10 @@ func (h *RateLimitHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var queued *strategy.QueuedRequest
+	var queued *types.QueuedRequest
 	if h.Config.Strategy == "leaky_bucket" {
 		// leaky_bucket 알고리즘을 사용하는 경우 현재 요청/응답 정보를 큐에 넘겨야한다.
-		queued = &strategy.QueuedRequest{
+		queued = &types.QueuedRequest{
 			Writer:  w,
 			Request: r,
 		}

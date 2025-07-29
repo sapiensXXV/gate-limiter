@@ -1,4 +1,6 @@
-package strategy
+package types
+
+import "net/http"
 
 type RateLimiter interface {
 	IsTarget(method, requestPath string) (bool, *ApiMatchResult)
@@ -9,8 +11,6 @@ type PathMatcher interface {
 	Match(path string, target string) bool
 }
 
-// ApiMatchResult limiter에서 target 매칭 이후 필요한 정보를 반환할 목적으로 만들어진 구조체
-// 일종의 DTO 역할을 한다.
 type ApiMatchResult struct {
 	Identifier    string
 	Limit         int
@@ -19,4 +19,14 @@ type ApiMatchResult struct {
 	RefillSeconds int
 	BucketSize    int
 	Target        string
+}
+
+type LeakyBucket struct {
+	Queue      chan QueuedRequest
+	BucketSize int
+}
+
+type QueuedRequest struct {
+	Writer  http.ResponseWriter
+	Request *http.Request
 }

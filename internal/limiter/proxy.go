@@ -2,18 +2,15 @@ package limiter
 
 import (
 	"fmt"
+	"gate-limiter/internal/limiter/types"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 )
 
-type ProxyHandler interface {
-	ToOrigin(w http.ResponseWriter, r *http.Request, origin string)
-}
-
 type DefaultProxyHandler struct{}
 
-var _ ProxyHandler = (*DefaultProxyHandler)(nil)
+var _ types.ProxyHandler = (*DefaultProxyHandler)(nil)
 
 func NewDefaultProxyHandler() *DefaultProxyHandler {
 	return &DefaultProxyHandler{}

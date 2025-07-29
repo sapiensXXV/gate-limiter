@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	bucket2 "gate-limiter/internal/limiter/bucket"
+	"gate-limiter/internal/limiter/types"
 	"github.com/redis/go-redis/v9"
 	"log"
 	"os"
@@ -37,7 +37,7 @@ var _ RedisClient = (*DefaultRedisClient)(nil)
 func NewDefaultRedisClient() *DefaultRedisClient {
 	dbValue, err := strconv.Atoi(os.Getenv("REDIS_DB"))
 	if err != nil {
-		log.Fatal("redis initialization fail")
+		log.Fatal("redisclient initialization fail")
 	}
 	rc := &DefaultRedisClient{}
 	rc.ctx = context.Background()
@@ -48,9 +48,9 @@ func NewDefaultRedisClient() *DefaultRedisClient {
 	})
 
 	if err := rc.client.Ping(rc.ctx).Err(); err != nil {
-		log.Fatal("redis connection fail")
+		log.Fatal("redisclient connection fail")
 	}
-	log.Println("redis connection success")
+	log.Println("redisclient connection success")
 
 	return rc
 }
@@ -58,7 +58,7 @@ func NewDefaultRedisClient() *DefaultRedisClient {
 func (d *DefaultRedisClient) Get(key string) (interface{}, error) {
 	val, err := d.client.Get(d.ctx, key).Result()
 	if errors.Is(err, redis.Nil) {
-		log.Printf("redis key=[%s] not exists\n", key)
+		log.Printf("redisclient key=[%s] not exists\n", key)
 		return nil, nil
 	}
 	return val, err
@@ -68,14 +68,14 @@ func (d *DefaultRedisClient) Get(key string) (interface{}, error) {
 func (d *DefaultRedisClient) GetObject(key string) (interface{}, error) {
 	val, err := d.client.Get(d.ctx, key).Bytes()
 	if errors.Is(err, redis.Nil) {
-		log.Printf("redis key=[%s] not exists\n", key)
+		log.Printf("redisclient key=[%s] not exists\n", key)
 		return nil, nil
 	}
 	if err != nil {
 		return nil, fmt.Errorf("Redis GetObject error for key=[%s]: %w\n", key, err)
 	}
 
-	var bucket bucket2.TokenBucket
+	var bucket types.TokenBucket
 	err = json.Unmarshal(val, &bucket)
 	if err != nil {
 		return nil, fmt.Errorf("JSON unmarshal error for key=[%s]: %w\n", key, err)
@@ -123,7 +123,7 @@ func (d *DefaultRedisClient) AddToSortedSet(key, member string, t time.Time) err
 func (d *DefaultRedisClient) GetZSetSize(key string) int {
 	size, err := d.client.ZCard(ctx, key).Result()
 	if err != nil {
-		log.Println("redis: get zset size fail")
+		log.Println("redisclient: get zset size fail")
 	}
 	return int(size)
 }
@@ -131,7 +131,7 @@ func (d *DefaultRedisClient) GetZSetSize(key string) int {
 func (d *DefaultRedisClient) GetOldestEntry(key string) (redis.Z, error) {
 	vals, err := d.client.ZRangeWithScores(ctx, key, 0, 0).Result()
 	if err != nil {
-		log.Println("redis: get oldest entry fail")
+		log.Println("redisclient: get oldest entry fail")
 	}
 	return vals[0], err
 }

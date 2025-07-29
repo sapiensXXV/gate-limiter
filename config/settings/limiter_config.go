@@ -56,5 +56,24 @@ func LoadRateLimitConfig(path string) (*RootRateLimiterConfig, error) {
 		log.Fatalf("Unmarshal: %v", err)
 	}
 
+	log.Printf("[사용전략] %20s\n", config.RateLimiter.Strategy)
+	log.Printf("[유저구분] %20s\n", config.RateLimiter.Identity.Key)
+	var apis []Api
+	apis = config.RateLimiter.Apis
+	log.Printf("[API 구분]\n")
+	for _, api := range apis {
+		log.Printf("  [이름] %s\n", api.Identifier)
+		log.Printf("  [경로]")
+		log.Printf("    -표현법: %s\n", api.Path.Expression)
+		log.Printf("    -값: %s\n", api.Path.Value)
+		log.Printf("  [메서드]: %s\n", api.Method)
+		log.Printf("  [제한 요청 수]: %d\n", api.Limit)
+		log.Printf("  [윈도우 초기화 시간(초)]: %d\n", api.WindowSeconds)
+		log.Printf("  [토큰 버킷 리필 주기(초)]: %d\n", api.RefillSeconds)
+		log.Printf("  [버킷 만료 시간(초)]: %d\n", api.ExpireSeconds)
+		log.Printf("  [(누출)버킷 사이즈]: %d\n", api.BucketSize)
+
+	}
+
 	return config, nil
 }
