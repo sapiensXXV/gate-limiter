@@ -36,7 +36,7 @@ func initConfig() settings.RateLimiterConfig {
 func initRateLimiter(
 	config *settings.RateLimiterConfig,
 	keyGenerator *util.IpKeyGenerator,
-	redisClient *redisclient.RedisClient,
+	redisClient *types.RedisClient,
 	proxy *limiter.DefaultProxyHandler,
 ) types.RateLimiter {
 	var rl types.RateLimiter
@@ -67,6 +67,6 @@ func NewKeyGenerator(config settings.RateLimiterConfig) *util.IpKeyGenerator {
 	return nil
 }
 
-func NewRedisClient() redisclient.RedisClient {
+func NewRedisClient() types.RedisClient {
 	return redisclient.NewDefaultRedisClient()
 }

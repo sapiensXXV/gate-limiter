@@ -4,8 +4,8 @@ import "time"
 
 // TokenBucket 토큰버킷을 표현하는 구조체
 type TokenBucket struct {
-	Token          int       `json:"token" redisclient:"token"`
-	LastRefillTime time.Time `json:"last_refill_time" redisclient:"last_refill_time"`
+	Token          int       `json:"token"`
+	LastRefillTime time.Time `json:"last_refill_time"`
 }
 
 func NewTokenBucket(token int) *TokenBucket {
