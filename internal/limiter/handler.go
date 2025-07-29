@@ -4,6 +4,7 @@ import (
 	"gate-limiter/config/settings"
 	"gate-limiter/internal/limiter/strategy"
 	"gate-limiter/internal/limiter/types"
+	"log"
 	"net/http"
 )
 
@@ -34,10 +35,13 @@ func NewRateLimitHandler(
 }
 
 func (h *RateLimitHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	isTarget, api := h.Limiter.IsTarget(r.Method, r.URL.String())
+	if h.Limiter == nil {
+		log.Println("RateLimitHandler.Limiter is nil!")
+	}
+	result := h.Limiter.IsTarget(r.Method, r.URL.String())
 
-	if !isTarget {
-		h.Proxy.ToOrigin(w, r, api.Target)
+	if !result.IsMatch {
+		h.Proxy.ToOrigin(w, r, h.Config.Target)
 		return
 	}
 
@@ -49,17 +53,17 @@ func (h *RateLimitHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			Request: r,
 		}
 		if ll, ok := h.Limiter.(*strategy.LeakyBucketLimiter); ok {
-			ll.IsAllowed(r.Header.Get(h.Config.Identity.Header), api, queued)
+			ll.IsAllowed(r.Header.Get(h.Config.Identity.Header), result, queued)
 		}
 	} else {
 		// token_bucket, sliding_window_log, sliding_window_counter
 		// 다른 알고리즘의 경우에는 QueuedRequest를 사용하지 않는다.
-		allowed, remaining := h.Limiter.IsAllowed(r.Header.Get(h.Config.Identity.Header), api, nil)
+		allowed, remaining := h.Limiter.IsAllowed(r.Header.Get(h.Config.Identity.Header), result, nil)
 		if !allowed {
 			h.Responder.RespondRateLimitExceeded(w, r, remaining)
 			return
 		}
 	}
 
-	h.Proxy.ToOrigin(w, r, api.Target)
+	h.Proxy.ToOrigin(w, r, h.Config.Target)
 }

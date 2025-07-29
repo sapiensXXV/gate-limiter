@@ -27,7 +27,7 @@ func NewFixedWindowCounterLimiter(
 	}
 }
 
-func (f *FixedWindowCounterLimiter) IsTarget(method, url string) (bool, *types.ApiMatchResult) {
+func (f *FixedWindowCounterLimiter) IsTarget(method, url string) *types.ApiMatchResult {
 	//TODO implement me
 	panic("implement me")
 }

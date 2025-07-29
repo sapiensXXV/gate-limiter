@@ -24,7 +24,7 @@ func NewLeakyBucketLimiter(
 	return h
 }
 
-func (l *LeakyBucketLimiter) IsTarget(method, url string) (bool, *types.ApiMatchResult) {
+func (l *LeakyBucketLimiter) IsTarget(method, url string) *types.ApiMatchResult {
 	for _, api := range l.Config.Apis {
 		pathExpression := api.Path.Expression
 		requestPath := api.Path.Value
@@ -37,7 +37,8 @@ func (l *LeakyBucketLimiter) IsTarget(method, url string) (bool, *types.ApiMatch
 			log.Println("cannot identify path expression")
 		}
 		if isPathMatch && method == api.Method {
-			return true, &types.ApiMatchResult{
+			return &types.ApiMatchResult{
+				IsMatch:    true,
 				Identifier: api.Identifier,
 				Limit:      api.Limit,
 				BucketSize: api.BucketSize,
@@ -45,7 +46,7 @@ func (l *LeakyBucketLimiter) IsTarget(method, url string) (bool, *types.ApiMatch
 			}
 		}
 	}
-	return false, nil
+	return &types.ApiMatchResult{IsMatch: false}
 }
 
 func (l *LeakyBucketLimiter) IsAllowed(

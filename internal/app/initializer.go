@@ -40,6 +40,7 @@ func initRateLimiter(
 	proxy *limiter.DefaultProxyHandler,
 ) types.RateLimiter {
 	var rl types.RateLimiter
+	log.Printf("selected strategy: [%s]\n", config.Strategy)
 	switch config.Strategy {
 	case "token_bucket":
 		rl = strategy.NewTokenBucketLimiter(keyGenerator, *redisClient, *config)
@@ -51,6 +52,7 @@ func initRateLimiter(
 	case "sliding_window_log":
 		rl = strategy.NewSlidingWindowLogLimiter(keyGenerator, *redisClient, *config)
 	case "sliding_window_counter":
+		rl = strategy.NewSlidingWindowCounterLimiter(keyGenerator, *redisClient, *config)
 	default:
 	}
 	return rl

@@ -3,7 +3,7 @@ package types
 import "net/http"
 
 type RateLimiter interface {
-	IsTarget(method, requestPath string) (bool, *ApiMatchResult)
+	IsTarget(method, requestPath string) *ApiMatchResult
 	IsAllowed(ip string, api *ApiMatchResult, queuedRequest *QueuedRequest) (bool, int)
 }
 
@@ -12,6 +12,7 @@ type PathMatcher interface {
 }
 
 type ApiMatchResult struct {
+	IsMatch       bool
 	Identifier    string
 	Limit         int
 	WindowSeconds int
@@ -19,11 +20,6 @@ type ApiMatchResult struct {
 	RefillSeconds int
 	BucketSize    int
 	Target        string
-}
-
-type LeakyBucket struct {
-	Queue      chan QueuedRequest
-	BucketSize int
 }
 
 type QueuedRequest struct {

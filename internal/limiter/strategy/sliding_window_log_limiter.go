@@ -1,7 +1,6 @@
 package strategy
 
 import (
-	"fmt"
 	"gate-limiter/config/settings"
 	"gate-limiter/internal/limiter/types"
 	"gate-limiter/internal/limiter/util"
@@ -30,21 +29,22 @@ func NewSlidingWindowLogLimiter(
 	return h
 }
 
-func (l *SlidingWindowLogLimiter) IsTarget(requestMethod, requestPath string) (bool, *types.ApiMatchResult) {
+func (l *SlidingWindowLogLimiter) IsTarget(requestMethod, requestPath string) *types.ApiMatchResult {
 	// 경로와 HTTP 메서드가 둘다 일치해야 제한 대상으로 판명
 	apis := l.Config.Apis
 	for _, api := range apis {
-		pathExpression := api.Path.Expression
-		targetPath := api.Path.Value
+		expressionType := api.Path.Expression
+		pathValue := api.Path.Value
 		var result bool
 		// 경로 표현 방식에 따라 경로 매칭 방식 결정
-		if pathExpression == regex {
-			result = util.MatchRegex(requestPath, targetPath)
-		} else if pathExpression == plain {
-			result = util.MatchPlain(requestPath, targetPath)
+		if expressionType == regex {
+			result = util.MatchRegex(requestPath, pathValue)
+		} else if expressionType == plain {
+			result = util.MatchPlain(requestPath, pathValue)
 		}
 		if result && requestMethod == api.Method {
-			return true, &types.ApiMatchResult{
+			return &types.ApiMatchResult{
+				IsMatch:       true,
 				Identifier:    api.Identifier,
 				Limit:         api.Limit,
 				WindowSeconds: api.WindowSeconds,
@@ -52,11 +52,11 @@ func (l *SlidingWindowLogLimiter) IsTarget(requestMethod, requestPath string) (b
 			}
 		}
 	}
-	return false, nil
+	return &types.ApiMatchResult{IsMatch: false}
 }
 
 func (l *SlidingWindowLogLimiter) IsAllowed(ip string, api *types.ApiMatchResult, _ *types.QueuedRequest) (bool, int) {
-	fmt.Printf("ip_address: [%s]를 검사합니다.\n", ip)
+	log.Printf("ip_address: [%s]를 검사합니다.\n", ip)
 	key := l.KeyGenerator.Make(ip, api.Identifier)
 
 	var err error

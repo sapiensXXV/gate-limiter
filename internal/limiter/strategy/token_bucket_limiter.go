@@ -31,7 +31,7 @@ func NewTokenBucketLimiter(
 	return h
 }
 
-func (l *TokenBucketLimiter) IsTarget(method, requestPath string) (bool, *types.ApiMatchResult) {
+func (l *TokenBucketLimiter) IsTarget(method, requestPath string) *types.ApiMatchResult {
 	apis := l.Config.Apis
 	for _, api := range apis {
 		pathExpression := api.Path.Expression
@@ -43,7 +43,8 @@ func (l *TokenBucketLimiter) IsTarget(method, requestPath string) (bool, *types.
 			result = util.MatchPlain(requestPath, targetPath)
 		}
 		if result && method == api.Method {
-			return true, &types.ApiMatchResult{
+			return &types.ApiMatchResult{
+				IsMatch:       true,
 				Identifier:    api.Identifier,
 				Limit:         api.Limit,
 				WindowSeconds: api.WindowSeconds,
@@ -53,7 +54,7 @@ func (l *TokenBucketLimiter) IsTarget(method, requestPath string) (bool, *types.
 			}
 		}
 	}
-	return false, nil
+	return &types.ApiMatchResult{IsMatch: false}
 }
 
 func (l *TokenBucketLimiter) IsAllowed(ip string, api *types.ApiMatchResult, _ *types.QueuedRequest) (bool, int) {

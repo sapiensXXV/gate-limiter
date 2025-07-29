@@ -15,6 +15,7 @@ type RateLimiterConfig struct {
 	Identity ClientIdentity `yaml:"identity"`
 	Client   ClientLimit    `yaml:"client"`
 	Apis     []Api          `yaml:"apis"`
+	Target   string         `yaml:"target"`
 }
 
 type ClientIdentity struct {

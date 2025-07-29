@@ -27,7 +27,7 @@ func NewSlidingWindowCounterLimiter(
 	}
 }
 
-func (s *SlidingWindowCounterLimiter) IsTarget(method, url string) (bool, *types.ApiMatchResult) {
+func (s *SlidingWindowCounterLimiter) IsTarget(method, url string) *types.ApiMatchResult {
 	//TODO implement me
 	panic("implement me")
 }
