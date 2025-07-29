@@ -4,12 +4,11 @@ import (
 	"gate-limiter/config/settings"
 	"gate-limiter/internal/limiter/types"
 	"gate-limiter/internal/limiter/util"
-	"gate-limiter/pkg/redisclient"
 )
 
 type SlidingWindowCounterLimiter struct {
 	KeyGenerator util.KeyGenerator
-	RedisClient  redisclient.RedisClient
+	RedisClient  types.RedisClient
 	Config       settings.RateLimiterConfig
 }
 
@@ -17,7 +16,7 @@ var _ types.RateLimiter = (*SlidingWindowCounterLimiter)(nil)
 
 func NewSlidingWindowCounterLimiter(
 	keyGenerator util.KeyGenerator,
-	redisClient redisclient.RedisClient,
+	redisClient types.RedisClient,
 	config settings.RateLimiterConfig,
 ) types.RateLimiter {
 	return &SlidingWindowCounterLimiter{

@@ -5,7 +5,6 @@ import (
 	"gate-limiter/config/settings"
 	"gate-limiter/internal/limiter/types"
 	"gate-limiter/internal/limiter/util"
-	"gate-limiter/pkg/redisclient"
 	"github.com/redis/go-redis/v9"
 	"log"
 	"time"
@@ -13,7 +12,7 @@ import (
 
 type TokenBucketLimiter struct {
 	KeyGenerator util.KeyGenerator
-	RedisClient  redisclient.RedisClient
+	RedisClient  types.RedisClient
 	Config       settings.RateLimiterConfig
 }
 
@@ -21,7 +20,7 @@ var _ types.RateLimiter = (*TokenBucketLimiter)(nil)
 
 func NewTokenBucketLimiter(
 	keyGenerator util.KeyGenerator,
-	redisClient redisclient.RedisClient,
+	redisClient types.RedisClient,
 	config settings.RateLimiterConfig,
 ) types.RateLimiter {
 	h := &TokenBucketLimiter{}
