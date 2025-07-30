@@ -63,6 +63,7 @@ func (h *HttpLimitResponder) RespondRateLimitExceeded(
 }
 
 func (h *HttpLimitResponder) defaultCalculateRetryAfter(key string) int {
+	// TODO 알고리즘에 따른 동작 분리 필요
 	oldest, err := h.RedisClient.GetOldestEntry(key)
 	if err != nil {
 		log.Printf("fail to get oldest entry on key=[%s]\n", key)

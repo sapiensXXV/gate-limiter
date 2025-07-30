@@ -42,8 +42,9 @@ func (m *LeakyBucketManager) AddRequest(
 	bucket, ok := m.buckets[apiIdentifier][key]
 	if !ok {
 		bucket = &types.LeakyBucket{
-			Queue:      make(chan types.QueuedRequest),
-			BucketSize: api.BucketSize,
+			Queue:            make(chan types.QueuedRequest),
+			BucketSize:       api.BucketSize,
+			LastModifiedTime: time.Now(),
 		}
 		m.buckets[apiIdentifier][key] = bucket
 	}
