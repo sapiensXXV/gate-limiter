@@ -14,7 +14,7 @@ func NewTokenBucket(token int) *TokenBucket {
 
 // LeakyBucket 누출버킷을 표현하는 구조체
 type LeakyBucket struct {
-	Queue            chan QueuedRequest
-	BucketSize       int
-	LastModifiedTime time.Time
+	Queue           chan QueuedRequest
+	BucketSize      int
+	LastProcessTime time.Time
 }

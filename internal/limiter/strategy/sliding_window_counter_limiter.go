@@ -31,7 +31,7 @@ func (s *SlidingWindowCounterLimiter) IsTarget(method, url string) *types.ApiMat
 	panic("implement me")
 }
 
-func (s *SlidingWindowCounterLimiter) IsAllowed(ip string, api *types.ApiMatchResult, _ *types.QueuedRequest) (bool, int) {
+func (s *SlidingWindowCounterLimiter) IsAllowed(ip string, api *types.ApiMatchResult, _ *types.QueuedRequest) types.RateLimitDecision {
 	//TODO implement me
 	panic("implement me")
 }

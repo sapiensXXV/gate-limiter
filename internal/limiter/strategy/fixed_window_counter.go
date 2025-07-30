@@ -31,7 +31,7 @@ func (f *FixedWindowCounterLimiter) IsTarget(method, url string) *types.ApiMatch
 	panic("implement me")
 }
 
-func (f *FixedWindowCounterLimiter) IsAllowed(ip string, api *types.ApiMatchResult, _ *types.QueuedRequest) (bool, int) {
+func (f *FixedWindowCounterLimiter) IsAllowed(ip string, api *types.ApiMatchResult, _ *types.QueuedRequest) types.RateLimitDecision {
 	//TODO implement me
 	panic("implement me")
 }

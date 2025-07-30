@@ -58,9 +58,9 @@ func (h *RateLimitHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	} else {
 		// token_bucket, sliding_window_log, sliding_window_counter
 		// 다른 알고리즘의 경우에는 QueuedRequest를 사용하지 않는다.
-		allowed, remaining := h.Limiter.IsAllowed(r.Header.Get(h.Config.Identity.Header), result, nil)
-		if !allowed {
-			h.Responder.RespondRateLimitExceeded(w, r, remaining)
+		decision := h.Limiter.IsAllowed(r.Header.Get(h.Config.Identity.Header), result, nil)
+		if !decision.Allowed {
+			h.Responder.RespondRateLimitExceeded(w, r, decision.Remaining, decision.RetryAfterSec)
 			return
 		}
 	}

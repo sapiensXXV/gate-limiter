@@ -17,7 +17,7 @@ func InitRateLimitHandler() (*limiter.RateLimitHandler, error) {
 	redisClient := NewRedisClient()
 	keyGenerator := NewKeyGenerator(config)
 
-	responder := limiter.NewHttpLimitResponder(nil, redisClient, keyGenerator, config)
+	responder := limiter.NewHttpLimitResponder(redisClient, keyGenerator, config)
 	proxy := limiter.NewDefaultProxyHandler()
 
 	rl := initRateLimiter(&config, keyGenerator, &redisClient, proxy)

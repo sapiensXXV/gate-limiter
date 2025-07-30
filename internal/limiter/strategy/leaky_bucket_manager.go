@@ -42,9 +42,9 @@ func (m *LeakyBucketManager) AddRequest(
 	bucket, ok := m.buckets[apiIdentifier][key]
 	if !ok {
 		bucket = &types.LeakyBucket{
-			Queue:            make(chan types.QueuedRequest),
-			BucketSize:       api.BucketSize,
-			LastModifiedTime: time.Now(),
+			Queue:           make(chan types.QueuedRequest),
+			BucketSize:      api.BucketSize,
+			LastProcessTime: time.Now(),
 		}
 		m.buckets[apiIdentifier][key] = bucket
 	}
@@ -60,10 +60,29 @@ func (m *LeakyBucketManager) AddRequest(
 func (m *LeakyBucketManager) CountBucketFreeCapacity(apiIdentifier string, key string) (int, error) {
 	bucket, ok := m.buckets[apiIdentifier][key]
 	if !ok {
-		return 0, fmt.Errorf("No Bucket Found: key=%s\n", key)
+		return 0, fmt.Errorf("No Bucket Found: api=%s key=%s\n", apiIdentifier, key)
 	}
 	// 채널의 용량과 현재길이를 빼면 여유공간을 알 수 있다.
 	return cap(bucket.Queue) - len(bucket.Queue), nil
+}
+
+func (m *LeakyBucketManager) CalcRetryTimeAfter(
+	apiIdentifier string,
+	key string,
+	api types.ApiMatchResult,
+) (int, error) {
+	bucket, ok := m.buckets[apiIdentifier][key]
+	if !ok {
+		return 0, fmt.Errorf("No Bucket Found: api=%s, key=%s\n", apiIdentifier, key)
+	}
+
+	// 현재 시간에 요청이 불가능하다는 것은 요청을 처리한 후 아직 리필타임이 찾아오지 않았다는 것을 의미한다.
+	// 마지막 작업시간 + 리필타임 - 현재시간 으로 계산하면 처리되기까지 남은 시간을 알 수 있다. (= 새로운 요청을 삽입할 수 있는 시간)
+	seconds := bucket.LastProcessTime.Add(time.Duration(api.RefillSeconds)).Sub(time.Now()).Seconds()
+	if seconds <= 0 {
+		return 0, nil
+	}
+	return int(seconds), nil
 }
 
 func (m *LeakyBucketManager) startScheduling(api settings.Api) {

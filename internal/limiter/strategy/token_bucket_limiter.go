@@ -56,13 +56,17 @@ func (l *TokenBucketLimiter) IsTarget(method, requestPath string) *types.ApiMatc
 	return &types.ApiMatchResult{IsMatch: false}
 }
 
-func (l *TokenBucketLimiter) IsAllowed(ip string, api *types.ApiMatchResult, _ *types.QueuedRequest) (bool, int) {
+func (l *TokenBucketLimiter) IsAllowed(ip string, api *types.ApiMatchResult, _ *types.QueuedRequest) types.RateLimitDecision {
 	key := l.KeyGenerator.Make(ip, api.Identifier)
 	b, err := l.RedisClient.GetObject(key)
 	bb, ok := b.(*types.TokenBucket)
 	if !ok {
 		log.Println("Invalid type assertion for key [%s]", key)
-		return false, 0
+		return types.RateLimitDecision{
+			Allowed:       false,
+			Remaining:     0,
+			RetryAfterSec: 0,
+		}
 	}
 	if errors.Is(err, redis.Nil) {
 		// 버킷이 없는 경우 새로운 버킷을 만들고 마지막 토큰 리필 시간을 현재로 설정한다.
@@ -71,13 +75,24 @@ func (l *TokenBucketLimiter) IsAllowed(ip string, api *types.ApiMatchResult, _ *
 		newBucket.Token-- // 토큰 한개 소비
 		if err := l.RedisClient.SetObject(key, newBucket, api.ExpireSeconds); err != nil {
 			log.Printf("redisclient value setting error: key=[%s], value=[%s], err=%v", key, newBucket, err)
-			return false, 0
+			return types.RateLimitDecision{
+				Allowed:       false,
+				Remaining:     0,
+				RetryAfterSec: 0,
+			}
 		}
-		return true, newBucket.Token
-
+		return types.RateLimitDecision{
+			Allowed:       true,
+			Remaining:     newBucket.Token,
+			RetryAfterSec: l.calcRetryAfter(newBucket, api), // TODO 재요청 가능시간 계산
+		}
 	} else if err != nil {
 		log.Printf("redisclient Get error key:[%s]\n, err:%v\n", key, err)
-		return false, 0
+		return types.RateLimitDecision{
+			Allowed:       false,
+			Remaining:     0,
+			RetryAfterSec: 0,
+		}
 	}
 
 	// 버킷이 있는 경우
@@ -90,12 +105,24 @@ func (l *TokenBucketLimiter) IsAllowed(ip string, api *types.ApiMatchResult, _ *
 		err := l.RedisClient.SetObject(key, bb, api.ExpireSeconds)
 		if err != nil {
 			log.Printf("Redis SetObject Error:%v\n", err)
-			return false, 0
+			return types.RateLimitDecision{
+				Allowed:       false,
+				Remaining:     0,
+				RetryAfterSec: 0,
+			}
 		}
-		return true, bb.Token
+		return types.RateLimitDecision{
+			Allowed:       true,
+			Remaining:     bb.Token,
+			RetryAfterSec: l.calcRetryAfter(bb, api),
+		}
 	}
 	log.Printf("Not enough token: user=[%s]", key)
-	return false, 0 // 토큰이 없는 경우 요청을 거부한다.
+	return types.RateLimitDecision{
+		Allowed:       false,
+		Remaining:     0,
+		RetryAfterSec: 0,
+	}
 }
 
 func refillTokenIfNeeded(b *types.TokenBucket, limit int, refillSeconds int) {
@@ -103,4 +130,13 @@ func refillTokenIfNeeded(b *types.TokenBucket, limit int, refillSeconds int) {
 		b.Token = limit
 		b.LastRefillTime = time.Now()
 	}
+}
+
+func (l *TokenBucketLimiter) calcRetryAfter(b *types.TokenBucket, api *types.ApiMatchResult) int {
+	nextRefillTime := b.LastRefillTime.Add(time.Duration(api.RefillSeconds) * time.Second)
+	diff := nextRefillTime.Sub(time.Now())
+	if diff <= 0 {
+		return 0
+	}
+	return int(diff.Seconds())
 }

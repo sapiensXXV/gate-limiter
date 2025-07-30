@@ -54,7 +54,7 @@ func (l *SlidingWindowLogLimiter) IsTarget(requestMethod, requestPath string) *t
 	return &types.ApiMatchResult{IsMatch: false}
 }
 
-func (l *SlidingWindowLogLimiter) IsAllowed(ip string, api *types.ApiMatchResult, _ *types.QueuedRequest) (bool, int) {
+func (l *SlidingWindowLogLimiter) IsAllowed(ip string, api *types.ApiMatchResult, _ *types.QueuedRequest) types.RateLimitDecision {
 	log.Printf("ip_address: [%s]를 검사합니다.\n", ip)
 	key := l.KeyGenerator.Make(ip, api.Identifier)
 
@@ -71,8 +71,33 @@ func (l *SlidingWindowLogLimiter) IsAllowed(ip string, api *types.ApiMatchResult
 	}
 	size := l.RedisClient.GetZSetSize(key)
 	if size > api.Limit {
-		return false, 0
+		return types.RateLimitDecision{
+			Allowed:       false,
+			Remaining:     0,
+			RetryAfterSec: 0,
+		}
 	}
 
-	return true, api.Limit - size
+	return types.RateLimitDecision{
+		Allowed:       true,
+		Remaining:     api.Limit - size,
+		RetryAfterSec: l.calcRetryAfterSeconds(key),
+	}
+}
+
+func (l *SlidingWindowLogLimiter) calcRetryAfterSeconds(key string) int {
+	oldest, err := l.RedisClient.GetOldestEntry(key)
+	if err != nil {
+		log.Printf("fail to get oldest entry on key=[%s]\n", key)
+	}
+
+	oldestTime := time.Unix(int64(oldest.Score), 0)
+	retryAt := oldestTime.Add(time.Minute * 1)
+	now := time.Now()
+
+	wait := retryAt.Sub(now).Seconds()
+	if wait < 0 {
+		return 0
+	}
+	return int(wait)
 }
