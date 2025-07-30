@@ -59,15 +59,6 @@ func (l *TokenBucketLimiter) IsTarget(method, requestPath string) *types.ApiMatc
 func (l *TokenBucketLimiter) IsAllowed(ip string, api *types.ApiMatchResult, _ *types.QueuedRequest) types.RateLimitDecision {
 	key := l.KeyGenerator.Make(ip, api.Identifier)
 	b, err := l.RedisClient.GetObject(key)
-	bb, ok := b.(*types.TokenBucket)
-	if !ok {
-		log.Println("Invalid type assertion for key [%s]", key)
-		return types.RateLimitDecision{
-			Allowed:       false,
-			Remaining:     0,
-			RetryAfterSec: 0,
-		}
-	}
 	if errors.Is(err, redis.Nil) {
 		// 버킷이 없는 경우 새로운 버킷을 만들고 마지막 토큰 리필 시간을 현재로 설정한다.
 		newBucket := types.NewTokenBucket(api.Limit)
@@ -88,6 +79,16 @@ func (l *TokenBucketLimiter) IsAllowed(ip string, api *types.ApiMatchResult, _ *
 		}
 	} else if err != nil {
 		log.Printf("redisclient Get error key:[%s]\n, err:%v\n", key, err)
+		return types.RateLimitDecision{
+			Allowed:       false,
+			Remaining:     0,
+			RetryAfterSec: 0,
+		}
+	}
+
+	bb, ok := b.(*types.TokenBucket)
+	if !ok {
+		log.Printf("Invalid type casting for key [%s]\n", key)
 		return types.RateLimitDecision{
 			Allowed:       false,
 			Remaining:     0,

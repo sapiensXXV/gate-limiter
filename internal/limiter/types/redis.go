@@ -17,4 +17,7 @@ type RedisClient interface {
 	GetZSetSize(key string) int
 	GetOldestEntry(key string) (redis.Z, error)
 	RemoveOldEntry(key string, before time.Time) error
+
+	Incr(key string) (int64, error)
+	Expire(key string, seconds int)
 }

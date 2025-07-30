@@ -55,7 +55,7 @@ func (d *DefaultRedisClient) GetObject(key string) (interface{}, error) {
 	val, err := d.client.Get(d.ctx, key).Bytes()
 	if errors.Is(err, redis.Nil) {
 		log.Printf("redisclient key=[%s] not exists\n", key)
-		return nil, nil
+		return nil, redis.Nil
 	}
 	if err != nil {
 		return nil, fmt.Errorf("Redis GetObject error for key=[%s]: %w\n", key, err)
@@ -127,4 +127,12 @@ func (d *DefaultRedisClient) GetOldestEntry(key string) (redis.Z, error) {
 func (d *DefaultRedisClient) RemoveOldEntry(key string, before time.Time) error {
 	score := float64(before.Unix())
 	return d.client.ZRemRangeByScore(ctx, key, "0", fmt.Sprintf("%f", score)).Err()
+}
+
+func (d *DefaultRedisClient) Incr(key string) (int64, error) {
+	return d.client.Incr(d.ctx, key).Result()
+}
+
+func (d *DefaultRedisClient) Expire(key string, seconds int) {
+	d.client.Expire(d.ctx, key, time.Duration(seconds)*time.Second)
 }

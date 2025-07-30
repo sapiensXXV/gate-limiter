@@ -61,7 +61,7 @@ func initRateLimiter(
 func NewKeyGenerator(config settings.RateLimiterConfig) *util.IpKeyGenerator {
 	identity := config.Identity
 	if identity.Key == "ipv4" {
-		return util.NewIpKeyGenerator()
+		return util.NewIpKeyGenerator(config)
 	}
 	log.Printf("[ERROR] Wrong identity key value")
 	return nil

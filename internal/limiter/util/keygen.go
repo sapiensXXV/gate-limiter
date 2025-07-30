@@ -13,8 +13,8 @@ type IpKeyGenerator struct {
 
 var _ KeyGenerator = (*IpKeyGenerator)(nil)
 
-func NewIpKeyGenerator() *IpKeyGenerator {
-	return &IpKeyGenerator{}
+func NewIpKeyGenerator(config settings.RateLimiterConfig) *IpKeyGenerator {
+	return &IpKeyGenerator{config: config}
 }
 
 func (k *IpKeyGenerator) Make(address string, category string) string {

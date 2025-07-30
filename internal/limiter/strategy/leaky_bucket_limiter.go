@@ -68,7 +68,3 @@ func (l *LeakyBucketLimiter) IsAllowed(
 		RetryAfterSec: retryAfterSec, // 마지막 Ticker 타임을 기록
 	}
 }
-
-func (l *LeakyBucketLimiter) calcRetryAfterSeconds() int {
-	// Ticker 주기 - (현재시간 - LastProcessTime)
-}
