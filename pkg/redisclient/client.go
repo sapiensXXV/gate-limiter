@@ -106,7 +106,7 @@ func (d *DefaultRedisClient) AddToSortedSet(key, member string, t time.Time) err
 	return d.client.ZAdd(ctx, key, *z).Err()
 }
 
-func (d *DefaultRedisClient) GetZSetSize(key string) int {
+func (d *DefaultRedisClient) ZSetSize(key string) int {
 	size, err := d.client.ZCard(ctx, key).Result()
 	if err != nil {
 		log.Println("redisclient: get zset size fail")
@@ -135,4 +135,13 @@ func (d *DefaultRedisClient) Incr(key string) (int64, error) {
 
 func (d *DefaultRedisClient) Expire(key string, seconds int) {
 	d.client.Expire(d.ctx, key, time.Duration(seconds)*time.Second)
+}
+
+func (d *DefaultRedisClient) ZRemRangeByScore(key string, from string, to string) error {
+	return d.client.ZRemRangeByScore(d.ctx, key, from, to).Err()
+}
+
+func (d *DefaultRedisClient) ZCount(key string, min string, max string) (int, error) {
+	cnt, err := d.client.ZCount(ctx, key, min, max).Result()
+	return int(cnt), err
 }

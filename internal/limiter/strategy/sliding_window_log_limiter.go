@@ -69,7 +69,7 @@ func (l *SlidingWindowLogLimiter) IsAllowed(ip string, api *types.ApiMatchResult
 	if err != nil {
 		log.Println("error while adding to sorted set:", err)
 	}
-	size := l.RedisClient.GetZSetSize(key)
+	size := l.RedisClient.ZSetSize(key)
 	if size > api.Limit {
 		return types.RateLimitDecision{
 			Allowed:       false,
