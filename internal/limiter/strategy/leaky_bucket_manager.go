@@ -86,7 +86,7 @@ func (m *LeakyBucketManager) CalcRetryTimeAfter(
 }
 
 func (m *LeakyBucketManager) startScheduling(api settings.Api) {
-	ticker := time.NewTicker(time.Duration(api.WindowSeconds) * time.Second)
+	ticker := time.NewTicker(time.Duration(api.RefillSeconds) * time.Second)
 	log.Printf("%s Ticker Start\n", api.Identifier)
 	defer ticker.Stop() // for range ticker.C가 끝나지 않는 이상 함수가 리턴되지 않으니 Stop은 프로그램종료전까지는 절대 호출되지 않는다.
 
