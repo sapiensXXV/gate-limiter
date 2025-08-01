@@ -36,7 +36,6 @@ type Api struct {
 	WindowSeconds int             `yaml:"windowSeconds"`
 	RefillSeconds int             `yaml:"refillSeconds"`
 	ExpireSeconds int             `yaml:"expireSeconds"`
-	BucketSize    int             `yaml:"bucketSize"`
 	Target        string          `yaml:"target"`
 }
 
@@ -72,8 +71,6 @@ func LoadRateLimitConfig(path string) (*RootRateLimiterConfig, error) {
 		log.Printf("  [윈도우 초기화 시간(초)]: %d\n", api.WindowSeconds)
 		log.Printf("  [토큰 버킷 리필 주기(초)]: %d\n", api.RefillSeconds)
 		log.Printf("  [버킷 만료 시간(초)]: %d\n", api.ExpireSeconds)
-		log.Printf("  [(누출)버킷 사이즈]: %d\n", api.BucketSize)
-
 	}
 
 	return config, nil

@@ -24,7 +24,6 @@ type ApiMatchResult struct {
 	WindowSeconds int
 	ExpireSeconds int
 	RefillSeconds int
-	BucketSize    int
 	Target        string
 }
 

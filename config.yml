@@ -17,7 +17,6 @@ rateLimiter:
       windowSeconds: 60
       refillSeconds: 60 # 토큰 버킷 알고리즘의 경우 토큰 리필 시간
       expireSeconds: 3600
-      bucketSize: 5 # 누출 버킷 알고리즘의 경우 버킷의 사이즈
   target: https://gongnomok.com # 통과된 요청이 전달될 도메인
 #  storage:
 #    method: redisclient

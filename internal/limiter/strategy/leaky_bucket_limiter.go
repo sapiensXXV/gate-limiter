@@ -41,7 +41,6 @@ func (l *LeakyBucketLimiter) IsTarget(method, url string) *types.ApiMatchResult 
 				IsMatch:    true,
 				Identifier: api.Identifier,
 				Limit:      api.Limit,
-				BucketSize: api.BucketSize,
 				Target:     api.Target,
 			}
 		}
