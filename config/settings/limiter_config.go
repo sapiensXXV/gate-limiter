@@ -1,14 +1,10 @@
 package settings
 
 import (
-	"fmt"
 	"gate-limiter/config/settings/validator"
-	"gate-limiter/internal/limiter/util"
 	"gopkg.in/yaml.v3"
 	"log"
 	"os"
-	"sort"
-	"strings"
 )
 
 type RootRateLimiterConfig struct {
@@ -41,7 +37,7 @@ type Api struct {
 	WindowSeconds int             `yaml:"windowSeconds"`
 	RefillSeconds int             `yaml:"refillSeconds"`
 	ExpireSeconds int             `yaml:"expireSeconds"`
-	//Target        string          `yaml:"target"`
+	Target        string          `yaml:"target"`
 }
 
 type RateLimiterPath struct {
