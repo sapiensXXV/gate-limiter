@@ -1,9 +1,14 @@
 package settings
 
 import (
+	"fmt"
+	"gate-limiter/config/settings/validator"
+	"gate-limiter/internal/limiter/util"
 	"gopkg.in/yaml.v3"
 	"log"
 	"os"
+	"sort"
+	"strings"
 )
 
 type RootRateLimiterConfig struct {
@@ -36,7 +41,7 @@ type Api struct {
 	WindowSeconds int             `yaml:"windowSeconds"`
 	RefillSeconds int             `yaml:"refillSeconds"`
 	ExpireSeconds int             `yaml:"expireSeconds"`
-	Target        string          `yaml:"target"`
+	//Target        string          `yaml:"target"`
 }
 
 type RateLimiterPath struct {
@@ -56,6 +61,8 @@ func LoadRateLimitConfig(path string) (*RootRateLimiterConfig, error) {
 		log.Fatalf("Unmarshal: %v", err)
 	}
 
+	validateConfig(config)
+
 	log.Printf("[사용전략] %20s\n", config.RateLimiter.Strategy)
 	log.Printf("[유저구분] %20s\n", config.RateLimiter.Identity.Key)
 	var apis []Api
@@ -74,4 +81,47 @@ func LoadRateLimitConfig(path string) (*RootRateLimiterConfig, error) {
 	}
 
 	return config, nil
+}
+
+// validateConfig 설정정보가 올바른지 검사하는 메서드
+func validateConfig(config *RootRateLimiterConfig) {
+	limiterConfig := config.RateLimiter
+	_, err := validator.ValidateStrategy(limiterConfig.Strategy)
+	if err != nil {
+		log.Fatal("validate configuration failed: ", err)
+	}
+
+	if err := validator.ValidateIdentity(limiterConfig.Identity.Key, limiterConfig.Identity.Header); err != nil {
+		log.Fatal("validate configuration failed: ", err)
+	}
+
+	apis := createValidateApis(limiterConfig.Apis)
+	if err := validator.ValidateApis(apis); err != nil {
+		log.Fatal("validate configuration failed: ", err)
+	}
+
+}
+
+func createValidateApis(apis []Api) []validator.ApiValidData {
+	result := make([]validator.ApiValidData, 0)
+	for _, api := range apis {
+		newPath := validator.ApiValidPath{
+			Expression: api.Path.Expression,
+			Value:      api.Path.Value,
+		}
+
+		newApi := &validator.ApiValidData{
+			Identifier:    api.Identifier,
+			Path:          newPath,
+			Method:        api.Method,
+			Limit:         api.Limit,
+			WindowSeconds: api.WindowSeconds,
+			RefillSeconds: api.RefillSeconds,
+			ExpireSeconds: api.ExpireSeconds,
+			//Target:        api.Target,
+		}
+
+		result = append(result, *newApi)
+	}
+	return result
 }
