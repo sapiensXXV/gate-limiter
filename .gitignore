@@ -1,6 +1,10 @@
 tmp/**
 .env
 *.tar.gz
+gate-limiter-linux-amd64
+gate-limiter-darwin-amd64
+gate-limiter-darwin-arm64
+gate-limiter-windows-amd64.exe
 # Created by https://www.toptal.com/developers/gitignore/api/intellij,go
 # Edit at https://www.toptal.com/developers/gitignore?templates=intellij,go
 
