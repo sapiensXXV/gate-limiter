@@ -9,6 +9,14 @@ import (
 
 type RootRateLimiterConfig struct {
 	RateLimiter RateLimiterConfig `yaml:"rateLimiter"`
+	RedisConfig RedisClientConfig `yaml:"redis"`
+}
+
+type RedisClientConfig struct {
+	Host     string `yaml:"host"`
+	Port     int    `yaml:"port"`
+	Password string `yaml:"password"`
+	DB       int    `yaml:"db"`
 }
 
 type RateLimiterConfig struct {

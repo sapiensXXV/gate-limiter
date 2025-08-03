@@ -4,32 +4,24 @@ import (
 	"errors"
 	config_ratelimiter "gate-limiter/config/settings"
 	"gate-limiter/internal/app"
-	"gate-limiter/pkg/redisclient"
-	"github.com/joho/godotenv"
 	"log"
 	"net/http"
 	"os"
 )
 
 func main() {
-
-	// application init
-	// environment variable initialization
-	if err := godotenv.Load(); err != nil {
-		log.Fatal("Error loading .env file")
+	configPath := os.Getenv("GATE_LIMITER_CONFIG")
+	if configPath == "" {
+		configPath = "config.yml"
 	}
 
-	// read config.yml/config.yaml file
-	rlc, err := config_ratelimiter.LoadRateLimitConfig("config.yml")
+	_, err := config_ratelimiter.LoadRateLimitConfig(configPath)
 	if err != nil {
 		log.Fatal("Error loading config.yml file")
 	}
-	log.Println(rlc.RateLimiter.Identity)
-	log.Println(rlc.RateLimiter.Client)
-	log.Println(rlc.RateLimiter.Apis)
 
-	// redisclient initialization
-	redisclient.InitRedis()
+	// redis-client initialization
+	//redisclient.InitRedis()
 
 	// handler
 	limitHandler, err := app.InitRateLimitHandler() // 초기화가 이루어지는 시점
