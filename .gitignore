@@ -1,4 +1,5 @@
 tmp/**
+build/**
 .env
 *.tar.gz
 gate-limiter-linux-amd64
