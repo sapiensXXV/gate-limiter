@@ -108,16 +108,18 @@ gate-limiter 에서는 아래 다섯가지 알고리즘을 제공합니다.
 알고리즘은 설정 파일 `config.yml` 에서 `rateLimiter.strategy` 필드로 설정할 수 있습니다.
 ### 토큰 버킷 (Token Bucket)
 요청 단위마다 버킷의 토큰을 소비하는 알고리즘입니다. 토큰이 남아있다면 요청이 통과되고, 남아있지 않다면 거부됩니다. 토큰은 주기적으로 채워집니다.
-
-![](https://private-user-images.githubusercontent.com/76734067/473124774-037778db-764b-4579-a196-187bb00ac53d.png?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NTM5ODU5MTMsIm5iZiI6MTc1Mzk4NTYxMywicGF0aCI6Ii83NjczNDA2Ny80NzMxMjQ3NzQtMDM3Nzc4ZGItNzY0Yi00NTc5LWExOTYtMTg3YmIwMGFjNTNkLnBuZz9YLUFtei1BbGdvcml0aG09QVdTNC1ITUFDLVNIQTI1NiZYLUFtei1DcmVkZW50aWFsPUFLSUFWQ09EWUxTQTUzUFFLNFpBJTJGMjAyNTA3MzElMkZ1cy1lYXN0LTElMkZzMyUyRmF3czRfcmVxdWVzdCZYLUFtei1EYXRlPTIwMjUwNzMxVDE4MTMzM1omWC1BbXotRXhwaXJlcz0zMDAmWC1BbXotU2lnbmF0dXJlPTY5MjgzNTVjNGE3ZTU2YWM2ODFkN2MyNmJmN2UzMjNlMmQzMDkzMzdjM2I5MjY4ODczYzdhYjEwYzc4NzNmYmQmWC1BbXotU2lnbmVkSGVhZGVycz1ob3N0In0.z9dpVfqglaKPrhNA0bfvBylrbYpWbmE6F5Wt5sQ5vvY)
+<p align="center">
+	<img width="900" alt="스크린샷 2025-08-01 오전 3 10 10" src="https://github.com/user-attachments/assets/de6bd04f-9148-4e0f-98d2-60eb393fb75d" />
+</p>
 
 두 가지 파라미터를 조절해야 합니다.
 - 버킷 크기: `config.yml`의 `rateLimiter.apis.limit` 값으로 조절할 수 있습니다.
 - 토큰 공급 주기: `config.yml`의 `rateLimiter.apis.refillSeconds` 값으로 조절할 수 있습니다.
 ### 누출 버킷 (Leaky Bucket)
 시간 단위로 요청 처리율이 고정되어 있는 알고리즘 입니다. Golang의 채널(channel)을 응용하거 구현되어 있습니다. 요청이 도착하면 채널이 가득차있는지 확인합니다. 채널에 빈자리가 있다면 채널에 요청이 추가되고, 빈자리가 없다면 요청은 버려집니다. 지정된 주기마다 큐에서 요청을 꺼내 처리합니다.
-
-![](https://private-user-images.githubusercontent.com/76734067/473123633-24ccb2f6-0f26-4cc7-a194-9b19b3be6911.png?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NTM5ODU3MjQsIm5iZiI6MTc1Mzk4NTQyNCwicGF0aCI6Ii83NjczNDA2Ny80NzMxMjM2MzMtMjRjY2IyZjYtMGYyNi00Y2M3LWExOTQtOWIxOWIzYmU2OTExLnBuZz9YLUFtei1BbGdvcml0aG09QVdTNC1ITUFDLVNIQTI1NiZYLUFtei1DcmVkZW50aWFsPUFLSUFWQ09EWUxTQTUzUFFLNFpBJTJGMjAyNTA3MzElMkZ1cy1lYXN0LTElMkZzMyUyRmF3czRfcmVxdWVzdCZYLUFtei1EYXRlPTIwMjUwNzMxVDE4MTAyNFomWC1BbXotRXhwaXJlcz0zMDAmWC1BbXotU2lnbmF0dXJlPWNkYzY1ZTg2ZGI3MGI3MDU0MzNiZDE3ODhlNmQyMDk0NDFjZDU5MzU2YjRlNjI1MWVkZGE1NmQzYTkyYzUyOGYmWC1BbXotU2lnbmVkSGVhZGVycz1ob3N0In0.unOwLtv7ckZ8S7MKQzUYG8pypagwQgZJzGEx_-qZS6s)
+<p align="center">
+	<img width="900" alt="스크린샷 2025-08-01 오전 3 13 23" src="https://github.com/user-attachments/assets/62eaa706-97d0-48b1-bfc5-eae9ef80a902" />
+</p>
 두 가지 파라미터를 조절해야 합니다.
 - 큐(채널)의 크기: `config.yml`의 `rateLimiter.apis.limit` 값으로 조절할 수 있습니다.
 - 요청 처리 주기: `config.yml`의 `rateLimiter.apis.windowSeconds` 값으로 조절할 수 있습니다.
@@ -128,7 +130,9 @@ gate-limiter 에서는 아래 다섯가지 알고리즘을 제공합니다.
 - 윈도우의 카운터 값이 임계치보다 작은 경우 요청이 받아 들여집니다.
 
 아래의 그림은 1분간 3번의 요청으로 제한된 경우를 나타낸 것입니다.
-![](https://private-user-images.githubusercontent.com/76734067/473149036-09f79984-7539-49b3-b913-84d9fd4090bd.png?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NTM5ODk5ODQsIm5iZiI6MTc1Mzk4OTY4NCwicGF0aCI6Ii83NjczNDA2Ny80NzMxNDkwMzYtMDlmNzk5ODQtNzUzOS00OWIzLWI5MTMtODRkOWZkNDA5MGJkLnBuZz9YLUFtei1BbGdvcml0aG09QVdTNC1ITUFDLVNIQTI1NiZYLUFtei1DcmVkZW50aWFsPUFLSUFWQ09EWUxTQTUzUFFLNFpBJTJGMjAyNTA3MzElMkZ1cy1lYXN0LTElMkZzMyUyRmF3czRfcmVxdWVzdCZYLUFtei1EYXRlPTIwMjUwNzMxVDE5MjEyNFomWC1BbXotRXhwaXJlcz0zMDAmWC1BbXotU2lnbmF0dXJlPWZiYzkxNjhlZmNmMTg3ODY2ZDhmNWM2YWU0ZjdjYmIzMDM0MDA4OTQ5Yzc4NTMyMWJjMTZlMDY2MTk4YWJhZTMmWC1BbXotU2lnbmVkSGVhZGVycz1ob3N0In0.1wa8ml2r_M7cMFVsOZ-6rmx9dTs2gwkimat-S8UmQ8M)
+<p align="center">
+	<img width="900" alt="스크린샷 2025-08-01 오전 4 20 58" src="https://github.com/user-attachments/assets/098a5d02-880d-4b84-b4e7-24c5d34a2f0a" />
+</p>
 
 두 가지 파라미터를 조절해야 합니다.
 - 윈도우 사이즈: `config.yml`의 `rateLimiter.apis.limit` 값으로 조절할 수 있습니다.
@@ -141,14 +145,21 @@ gate-limiter 에서는 아래 다섯가지 알고리즘을 제공합니다.
 	- 윈도우 내 타임스탬프의 갯수가 임계치보다 작다면 요청을 허용한다.
 	- 윈도우 내 타임스탬프의 갯수가 임계치와 같거나 크다면 요청을 거부한다.
 
-![](https://private-user-images.githubusercontent.com/76734067/473160649-8f992321-0f40-4d1a-a152-ef39560ff550.png?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NTM5OTIxMzMsIm5iZiI6MTc1Mzk5MTgzMywicGF0aCI6Ii83NjczNDA2Ny80NzMxNjA2NDktOGY5OTIzMjEtMGY0MC00ZDFhLWExNTItZWYzOTU2MGZmNTUwLnBuZz9YLUFtei1BbGdvcml0aG09QVdTNC1ITUFDLVNIQTI1NiZYLUFtei1DcmVkZW50aWFsPUFLSUFWQ09EWUxTQTUzUFFLNFpBJTJGMjAyNTA3MzElMkZ1cy1lYXN0LTElMkZzMyUyRmF3czRfcmVxdWVzdCZYLUFtei1EYXRlPTIwMjUwNzMxVDE5NTcxM1omWC1BbXotRXhwaXJlcz0zMDAmWC1BbXotU2lnbmF0dXJlPTMwOWFlOTA3YmNlMmFiZDRmOGY4NGEzZjFhNzBjMGQzYmEzNTliNWU2MmYxM2JjNmVjMzMxMDUxMjg1ZTE5MDYmWC1BbXotU2lnbmVkSGVhZGVycz1ob3N0In0.9nmaDjwQmVmNYGGGc83PDOIuIlj-_dTU6ZdEHrjXVmY)
+<p align="center">
+<img width="900" alt="스크린샷 2025-08-01 오전 4 57 03" src="https://github.com/user-attachments/assets/85fc0c83-b11d-43a2-b148-4104781936e1" />
+</p>
 두 가지 파라미터를 조절해야 합니다.
 - 윈도우 사이즈: `config.yml`의 `rateLimiter.apis.limit` 값으로 조절할 수 있습니다.
 - 윈도우 시간 단위: `config.yml`의 `rateLimiter.apis.windowSeconds` 값으로 조절할 수 있습니다.
 ### 슬라이딩 윈도우 카운터 (Sliding Window Counter)
 슬라이딩 윈도우 카운터(Sliding Window Counter) 알고리즘은 고정 윈도우 알고리즘과 이동 윈도우 알고리즘을 결합한 알고리즘입니다. 현재 윈도우가 직전 고정 시간대와 현재 고정 시간대를 차지하고 있는 비율에 따라서 현재 윈도우의 요청 수를 근사치로 계산하는 방법입니다.
-![](https://private-user-images.githubusercontent.com/76734067/473164580-3bfb2550-e465-4147-89fc-41bbca96932d.png?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NTM5OTI4NzYsIm5iZiI6MTc1Mzk5MjU3NiwicGF0aCI6Ii83NjczNDA2Ny80NzMxNjQ1ODAtM2JmYjI1NTAtZTQ2NS00MTQ3LTg5ZmMtNDFiYmNhOTY5MzJkLnBuZz9YLUFtei1BbGdvcml0aG09QVdTNC1ITUFDLVNIQTI1NiZYLUFtei1DcmVkZW50aWFsPUFLSUFWQ09EWUxTQTUzUFFLNFpBJTJGMjAyNTA3MzElMkZ1cy1lYXN0LTElMkZzMyUyRmF3czRfcmVxdWVzdCZYLUFtei1EYXRlPTIwMjUwNzMxVDIwMDkzNlomWC1BbXotRXhwaXJlcz0zMDAmWC1BbXotU2lnbmF0dXJlPWI1ZGY1NDQxYzQ3N2Q2ZmRiZWZjOGEwNTQwOTQ0YWM3MjdlZmJiOTYxNzg5MmU4MTczMDI4Y2I0NWI1MDc0M2EmWC1BbXotU2lnbmVkSGVhZGVycz1ob3N0In0.GIs-u4Z4jIYfLTyAMGNzenR25fX9EW54f1w9u1vIlfc)
- - 윈도우 사이즈: `config.yml`의 `rateLimiter.apis.limit` 값으로 조절할 수 있습니다.
+
+<p align="center">
+<img width="900" alt="스크린샷 2025-08-01 오전 5 09 27" src="https://github.com/user-attachments/assets/fbe86474-8de0-47ee-bd16-554a7e358d80" />
+</p>
+ 
+두 가지 파라미터를 조절해야 합니다.
+- 윈도우 사이즈: `config.yml`의 `rateLimiter.apis.limit` 값으로 조절할 수 있습니다.
 - 윈도우 시간 단위: `config.yml`의 `rateLimiter.apis.windowSeconds` 값으로 조절할 수 있습니다.
 
 ## More Info
