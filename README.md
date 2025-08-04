@@ -1,5 +1,13 @@
-<img width="1022" height="520" alt="Image" src="https://github.com/user-attachments/assets/b8fde899-b020-4093-8a50-c5fea0e925bd" />
 
+<h1 align="center">Gate Limiter</h1>
+
+[![Golang](https://img.shields.io/badge/Go-1.24.5-00ADD8?style=flat&logo=Go)](https://go.dev/doc/)
+[![NPM](https://img.shields.io/badge/npm-reference-CB3837?style=flat&logo=npm&logoColor=CB3837&labelColor=747474
+)](https://www.npmjs.com/package/@sapiensxxv/gate-limiter-cli)
+![HomeBrew](https://img.shields.io/badge/Homebrew-reference-FBB040?style=flat&logo=Homebrew&logoColor=FBB040
+)
+[![Docker](https://img.shields.io/badge/Docker-reference-2496ED?style=flat&logo=Docker&logoColor=2496ED
+)](https://hub.docker.com/repository/docker/sjhn/gate-limiter/general)
 
 ## Introduction
 **gate-limiter**는 API 남용을 방지하고 사용자 간 공정한 리소스 사용을 보장하기 위해 설계된, 설정 가능한 요청 처리량 제한(rate limiting) 미들웨어 입니다. Go 언어로 작성되었으며 다음 다섯가지의 처리량제한 알고리즘을 제공합니다.
@@ -99,7 +107,7 @@ rateLimiter:
 
 ## Algorithm
 gate-limiter 에서는 아래 다섯가지 알고리즘을 제공합니다.
- - 토큰 버킷(Token Bucket)
+- 토큰 버킷(Token Bucket)
 - 누출 버킷(Leaky Bucket)
 - 고정 윈도우 카운터(Fixed Window Counter)
 - 슬라이딩 윈도우 로그(Sliding Window Log)
@@ -120,11 +128,15 @@ gate-limiter 에서는 아래 다섯가지 알고리즘을 제공합니다.
 <p align="center">
 	<img width="900" alt="스크린샷 2025-08-01 오전 3 13 23" src="https://github.com/user-attachments/assets/62eaa706-97d0-48b1-bfc5-eae9ef80a902" />
 </p>
+
 두 가지 파라미터를 조절해야 합니다.
+
 - 큐(채널)의 크기: `config.yml`의 `rateLimiter.apis.limit` 값으로 조절할 수 있습니다.
 - 요청 처리 주기: `config.yml`의 `rateLimiter.apis.windowSeconds` 값으로 조절할 수 있습니다.
+
 ### 고정 윈도우 카운터 (Fixed Window Counter)
 타임라인을 윈도우라는 고정된 단위로 나누고 윈도우마다 카운터를 붙이는 방법입니다.
+
 - 요청이 들어올 때마다 윈도우의 카운터 값이 1증가합니다.
 - 윈도우의 카운터 값이 임계치와 같거나 큰 경우 들어오는 요청은 버려집니다.
 - 윈도우의 카운터 값이 임계치보다 작은 경우 요청이 받아 들여집니다.
@@ -148,9 +160,12 @@ gate-limiter 에서는 아래 다섯가지 알고리즘을 제공합니다.
 <p align="center">
 <img width="900" alt="스크린샷 2025-08-01 오전 4 57 03" src="https://github.com/user-attachments/assets/85fc0c83-b11d-43a2-b148-4104781936e1" />
 </p>
+
 두 가지 파라미터를 조절해야 합니다.
+
 - 윈도우 사이즈: `config.yml`의 `rateLimiter.apis.limit` 값으로 조절할 수 있습니다.
 - 윈도우 시간 단위: `config.yml`의 `rateLimiter.apis.windowSeconds` 값으로 조절할 수 있습니다.
+
 ### 슬라이딩 윈도우 카운터 (Sliding Window Counter)
 슬라이딩 윈도우 카운터(Sliding Window Counter) 알고리즘은 고정 윈도우 알고리즘과 이동 윈도우 알고리즘을 결합한 알고리즘입니다. 현재 윈도우가 직전 고정 시간대와 현재 고정 시간대를 차지하고 있는 비율에 따라서 현재 윈도우의 요청 수를 근사치로 계산하는 방법입니다.
 
