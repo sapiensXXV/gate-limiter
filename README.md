@@ -1,6 +1,8 @@
 
 <h1 align="center">Gate Limiter</h1>
 
+한국어 | [English](./README_EN.md)
+
 [![Golang](https://img.shields.io/badge/Go-1.24.5-00ADD8?style=flat&logo=Go)](https://go.dev/doc/)
 [![NPM](https://img.shields.io/badge/npm-reference-CB3837?style=flat&logo=npm&logoColor=CB3837&labelColor=747474
 )](https://www.npmjs.com/package/@sapiensxxv/gate-limiter-cli)
