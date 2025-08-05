@@ -180,7 +180,7 @@ gate-limiter 에서는 아래 다섯가지 알고리즘을 제공합니다.
 - 윈도우 시간 단위: `config.yml`의 `rateLimiter.apis.windowSeconds` 값으로 조절할 수 있습니다.
 
 ## More Info
-어떤 알고리즘을 선택해야할지 고민된다면 [처리율 제한기 개발]() 포스트를 참고해주세요
+어떤 알고리즘을 선택해야할지 고민된다면 [처리율 제한기 개발](https://sapiensxxv.github.io/posts/%EC%B2%98%EB%A6%AC%EC%9C%A8-%EC%A0%9C%ED%95%9C%EA%B8%B0-%EA%B0%9C%EB%B0%9C/) 포스트를 참고해주세요
 
 ## Author
 - [Jaehoon So](https://github.com/sapiensXXV)

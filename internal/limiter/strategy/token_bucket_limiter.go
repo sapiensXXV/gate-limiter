@@ -65,7 +65,7 @@ func (l *TokenBucketLimiter) IsAllowed(ip string, api *types.ApiMatchResult, _ *
 		newBucket.LastRefillTime = time.Now()
 		newBucket.Token-- // 토큰 한개 소비
 		if err := l.RedisClient.SetObject(key, newBucket, api.ExpireSeconds); err != nil {
-			log.Printf("redisclient value setting error: key=[%s], value=[%s], err=%v", key, newBucket, err)
+			log.Printf("redisclient value setting error: key=[%s], value=[%v], err=%v", key, newBucket, err)
 			return types.RateLimitDecision{
 				Allowed:       false,
 				Remaining:     0,

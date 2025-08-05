@@ -194,7 +194,7 @@ Two parameters must be configured:
 
 ## More Info
 
-If you’re unsure which algorithm to choose, refer to the Rate Limiter Design Post.
+If you’re unsure which algorithm to choose, refer to the Rate [Limiter Design Post](https://sapiensxxv.github.io/posts/%EC%B2%98%EB%A6%AC%EC%9C%A8-%EC%A0%9C%ED%95%9C%EA%B8%B0-%EA%B0%9C%EB%B0%9C/).
 
 Author
 - Jaehoon So
