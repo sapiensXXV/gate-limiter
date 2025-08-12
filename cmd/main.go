@@ -4,6 +4,7 @@ import (
 	"errors"
 	config_ratelimiter "gate-limiter/config/settings"
 	"gate-limiter/internal/app"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"log"
 	"net/http"
 	"os"
@@ -28,6 +29,9 @@ func main() {
 	if err != nil {
 		log.Fatal("Error initializing rate limiter handler", err)
 	}
+
+	//Prometheus
+	http.Handle("/metrics", promhttp.Handler())
 	http.Handle("/", limitHandler)
 	err = http.ListenAndServe(":8081", limitHandler) // 사용자의 요청을 받기 시작하는 지점
 
