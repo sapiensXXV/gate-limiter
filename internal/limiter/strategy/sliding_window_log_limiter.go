@@ -5,6 +5,7 @@ import (
 	"gate-limiter/internal/limiter/types"
 	"gate-limiter/internal/limiter/util"
 	"log"
+	"math"
 	"time"
 )
 
@@ -81,23 +82,25 @@ func (l *SlidingWindowLogLimiter) IsAllowed(ip string, api *types.ApiMatchResult
 	return types.RateLimitDecision{
 		Allowed:       true,
 		Remaining:     api.Limit - size,
-		RetryAfterSec: l.calcRetryAfterSeconds(key),
+		RetryAfterSec: l.calcRetryAfterSeconds(key, api.WindowSeconds),
 	}
 }
 
-func (l *SlidingWindowLogLimiter) calcRetryAfterSeconds(key string) int {
+func (l *SlidingWindowLogLimiter) calcRetryAfterSeconds(key string, windowSeconds int) int {
 	oldest, err := l.RedisClient.GetOldestEntry(key)
 	if err != nil {
-		log.Printf("fail to get oldest entry on key=[%s]\n", key)
-	}
-
-	oldestTime := time.Unix(int64(oldest.Score), 0)
-	retryAt := oldestTime.Add(time.Minute * 1)
-	now := time.Now()
-
-	wait := retryAt.Sub(now).Seconds()
-	if wait < 0 {
 		return 0
 	}
-	return int(wait)
+
+	oldestSec := int64(math.Round(oldest.Score))
+	oldestTime := time.Unix(oldestSec, 0)
+
+	retryAt := oldestTime.Add(time.Duration(windowSeconds) * time.Second)
+	wait := time.Until(retryAt).Seconds()
+
+	if wait <= 0 {
+		return 0
+	}
+	return int(math.Ceil(wait))
+
 }
