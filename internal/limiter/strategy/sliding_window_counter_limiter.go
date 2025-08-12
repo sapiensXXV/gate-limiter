@@ -98,7 +98,7 @@ func (l *SlidingWindowCounterLimiter) IsAllowed(
 	if int(math.Floor(result)) > api.Limit {
 		return types.RateLimitDecision{
 			Allowed:       false,
-			RetryAfterSec: int(currentWindowStart.Add(time.Duration(api.WindowSeconds)).Sub(now)),
+			RetryAfterSec: int(currentWindowStart.Add(time.Duration(api.WindowSeconds) * time.Second).Sub(now)),
 		}
 	}
 

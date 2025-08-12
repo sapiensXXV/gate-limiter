@@ -5,6 +5,7 @@ import (
 	"gate-limiter/internal/limiter/types"
 	"gate-limiter/internal/limiter/util"
 	"log"
+	"math"
 	"time"
 )
 
@@ -77,7 +78,7 @@ func (l *FixedWindowCounterLimiter) IsAllowed(ip string, api *types.ApiMatchResu
 	if cnt > int64(api.Limit) {
 		retryAt := windowStart.Add(time.Duration(api.WindowSeconds) * time.Second)
 		wait := retryAt.Sub(time.Now())
-		sec := int(wait)
+		sec := int(math.Ceil(wait.Seconds()))
 		if sec < 0 {
 			sec = 0
 		}
