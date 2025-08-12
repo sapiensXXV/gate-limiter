@@ -6,6 +6,7 @@ import (
 	"gate-limiter/internal/limiter/util"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 const (
@@ -38,12 +39,15 @@ func NewHttpLimitResponder(
 
 func (h *HttpLimitResponder) RespondRateLimitExceeded(
 	w http.ResponseWriter,
-	r *http.Request,
+	_ *http.Request,
 	remaining int,
 	retryAfter int,
 ) {
+
+	resetAt := time.Now().Add(time.Duration(retryAfter) * time.Second).Unix()
+
 	w.Header().Set(XRateLimitRemaining, strconv.Itoa(remaining))
-	w.Header().Set(XRateLimitReset, strconv.Itoa(AllowedCount))
+	w.Header().Set(XRateLimitReset, strconv.FormatInt(resetAt, 10))
 	w.Header().Set(XRateLimitRetryAfter, strconv.Itoa(retryAfter))
 	w.WriteHeader(http.StatusTooManyRequests) // HTTP 429 (too many requests)
 }

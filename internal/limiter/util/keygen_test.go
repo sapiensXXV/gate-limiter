@@ -7,7 +7,6 @@ import (
 )
 
 func TestIpKeyGenerator_Make(t *testing.T) {
-	//generator := IpKeyGenerator{}
 	config := &settings.RateLimiterConfig{Strategy: "token_bucket"}
 	generator := NewIpKeyGenerator(*config)
 	result := generator.Make("11.11.11.11", "comment")

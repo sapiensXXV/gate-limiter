@@ -9,7 +9,6 @@ import (
 )
 
 const XForwardedFor = "X-Forwarded-For"
-const AllowedCount = 5
 
 type RateLimitHandler struct {
 	Limiter   types.RateLimiter
