@@ -186,4 +186,4 @@ gate-limiter 에서는 아래 다섯가지 알고리즘을 제공합니다.
 - [Jaehoon So](https://github.com/sapiensXXV)
 - Email: jhspacelover@naver.com
 ## License
-`gate-limmiter` is available under the `MIT license`. See the [LICENSE](https://github.com/sapiensXXV/gate-limiter/blob/main/LICENSE) file for more info.
+`gate-limiter` is available under the `MIT license`. See the [LICENSE](https://github.com/sapiensXXV/gate-limiter/blob/main/LICENSE) file for more info.
