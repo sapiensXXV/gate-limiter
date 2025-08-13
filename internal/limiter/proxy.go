@@ -1,8 +1,8 @@
 package limiter
 
 import (
-	"fmt"
 	"gate-limiter/internal/limiter/types"
+	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -33,7 +33,7 @@ func (dph *DefaultProxyHandler) ToOrigin(w http.ResponseWriter, r *http.Request,
 		req.URL.RawQuery = r.URL.RawQuery
 		req.Header.Set("X-Forwarded-For", r.Header.Get(XForwardedFor))
 	}
-	fmt.Printf("원래 요청 경로: [%s %s%s] 로 요청을 재전달합니다.®\n", r.Method, target, r.URL.RequestURI())
+	log.Printf("원래 요청 경로: [%s %s%s] 로 요청을 재전달합니다\n", r.Method, target, r.URL.RequestURI())
 
 	proxy.ServeHTTP(w, r)
 }

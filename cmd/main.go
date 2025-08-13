@@ -1,9 +1,9 @@
 package main
 
 import (
-	"errors"
 	config_ratelimiter "gate-limiter/config/settings"
 	"gate-limiter/internal/app"
+	"gate-limiter/internal/metrics"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"log"
 	"net/http"
@@ -21,24 +21,14 @@ func main() {
 		log.Fatal("Error loading config.yml file")
 	}
 
-	// redis-client initialization
-	//redisclient.InitRedis()
-
 	// handler
 	limitHandler, err := app.InitRateLimitHandler() // 초기화가 이루어지는 시점
 	if err != nil {
 		log.Fatal("Error initializing rate limiter handler", err)
 	}
 
-	//Prometheus
-	http.Handle("/metrics", promhttp.Handler())
-	http.Handle("/", limitHandler)
-	err = http.ListenAndServe(":8081", limitHandler) // 사용자의 요청을 받기 시작하는 지점
-
-	if errors.Is(err, http.ErrServerClosed) {
-		log.Println("server closed\n")
-	} else if err != nil {
-		log.Println("error starting server", err)
-		os.Exit(1)
-	}
+	mux := http.NewServeMux()
+	mux.Handle("/metrics", promhttp.Handler())
+	mux.Handle("/", limitHandler)
+	log.Fatal(http.ListenAndServe(":8081", metrics.WithMetrics(mux)))
 }

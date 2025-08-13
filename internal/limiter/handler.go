@@ -4,6 +4,7 @@ import (
 	"gate-limiter/config/settings"
 	"gate-limiter/internal/limiter/strategy"
 	"gate-limiter/internal/limiter/types"
+	"gate-limiter/internal/metrics"
 	"log"
 	"net/http"
 )
@@ -38,6 +39,7 @@ func (h *RateLimitHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		log.Println("RateLimitHandler.Limiter is nil!")
 	}
 	result := h.Limiter.IsTarget(r.Method, r.URL.String())
+	policy := h.Config.Strategy
 
 	if !result.IsMatch {
 		h.Proxy.ToOrigin(w, r, h.Config.Target)
@@ -60,8 +62,10 @@ func (h *RateLimitHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		decision := h.Limiter.IsAllowed(r.Header.Get(h.Config.Identity.Header), result, nil)
 		if !decision.Allowed {
 			h.Responder.RespondRateLimitExceeded(w, r, decision.Remaining, decision.RetryAfterSec)
+			metrics.ObserveBlocked(policy) // 메트릭 집계 -> 블록
 			return
 		}
+		metrics.ObserveAllowed(policy) // 메트릭 집계 -> 통과
 	}
 
 	h.Proxy.ToOrigin(w, r, h.Config.Target)

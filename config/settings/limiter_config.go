@@ -122,7 +122,6 @@ func createValidateApis(apis []Api) []validator.ApiValidData {
 			WindowSeconds: api.WindowSeconds,
 			RefillSeconds: api.RefillSeconds,
 			ExpireSeconds: api.ExpireSeconds,
-			//Target:        api.Target,
 		}
 
 		result = append(result, *newApi)
