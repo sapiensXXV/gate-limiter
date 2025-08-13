@@ -62,7 +62,7 @@ func (h *RateLimitHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		decision := h.Limiter.IsAllowed(r.Header.Get(h.Config.Identity.Header), result, nil)
 		if !decision.Allowed {
 			h.Responder.RespondRateLimitExceeded(w, r, decision.Remaining, decision.RetryAfterSec)
-			metrics.ObserveBlocked(policy) // 메트릭 집계 -> 블록
+			metrics.ObserveBlocked(policy, "허용치 초과") // 메트릭 집계 -> 블록
 			return
 		}
 		metrics.ObserveAllowed(policy) // 메트릭 집계 -> 통과

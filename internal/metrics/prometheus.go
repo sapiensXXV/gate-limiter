@@ -72,13 +72,13 @@ func WithMetrics(next http.Handler) http.Handler {
 
 // 편의 함수. 제한 판단 지점에서 해당 함수를 사용하면 된다.
 func ObserveAllowed(policy string) {
-	rlDecisionTotal.WithLabelValues(policy, "allowed").Inc()
+	rlDecisionTotal.WithLabelValues(policy, "allowed", "ok").Inc()
 }
 
-func ObserveBlocked(policy string) {
-	rlDecisionTotal.WithLabelValues(policy, "blocked").Inc()
+func ObserveBlocked(policy, reason string) {
+	rlDecisionTotal.WithLabelValues(policy, "blocked", reason).Inc()
 }
 
-func SetLimitPerSec(policy string, v float64) {
+func SetLimitPerSec(policy string, v float64 {
 	rlLimitPerSec.WithLabelValues(policy).Set(v)
 }
