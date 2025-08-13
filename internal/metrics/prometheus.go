@@ -79,6 +79,6 @@ func ObserveBlocked(policy, reason string) {
 	rlDecisionTotal.WithLabelValues(policy, "blocked", reason).Inc()
 }
 
-func SetLimitPerSec(policy string, v float64 {
+func SetLimitPerSec(policy string, v float64) {
 	rlLimitPerSec.WithLabelValues(policy).Set(v)
 }
