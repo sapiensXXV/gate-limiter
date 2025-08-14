@@ -35,7 +35,7 @@ var rlDecisionTotal = promauto.NewCounterVec(
 		Name:      "decisions_total", // gatelimiter_rate_limit_decisions_total
 		Help:      "Rate limit decisions per policy",
 	},
-	[]string{"policy", "result", "reason"},
+	[]string{"result", "policy", "reason"},
 )
 
 var rlLimitPerSec = promauto.NewGaugeVec(
@@ -72,11 +72,11 @@ func WithMetrics(next http.Handler) http.Handler {
 
 // 편의 함수. 제한 판단 지점에서 해당 함수를 사용하면 된다.
 func ObserveAllowed(policy string) {
-	rlDecisionTotal.WithLabelValues(policy, "allowed", "ok").Inc()
+	rlDecisionTotal.WithLabelValues("allowed", policy, "ok").Inc()
 }
 
 func ObserveBlocked(policy, reason string) {
-	rlDecisionTotal.WithLabelValues(policy, "blocked", reason).Inc()
+	rlDecisionTotal.WithLabelValues("blocked", policy, reason).Inc()
 }
 
 func SetLimitPerSec(policy string, v float64) {
