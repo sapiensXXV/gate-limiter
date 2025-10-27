@@ -77,6 +77,11 @@ rateLimiter:
       refillSeconds: 60 #// 토큰 버킷 알고리즘의 경우 토큰 리필 시간  
       expireSeconds: 3600  
   target: https://mywebsitedomain.com # 통과된 요청이 전달될 도메인
+redis:
+  host: localhost
+  port: 6379
+  password:
+  db: 0
 ```
 
 - **rateLimiter**: 설정의 루트. 처리율 제한의 모든 설정정보는 이곳에서 시작한다.
@@ -108,7 +113,11 @@ rateLimiter:
 			- 누출 버킷 알고리즘
 		- **expireSeconds**: 사용되지 않는 버킷이나 윈도우가 메모리/Redis에서 유지되는 시간
 	- **target**: 허용된 요청이 전달될 도메인 주소
-
+- redis: Redis 저장소 정보
+    - **host**: 레디스 호스트 주소
+    - **port**: 레디스 포트 번호
+    - **password**: 레디스 비밀번호
+    - **db**: 데이터베이스 번호
 ## Algorithm
 gate-limiter 에서는 아래 다섯가지 알고리즘을 제공합니다.
 - 토큰 버킷(Token Bucket)
