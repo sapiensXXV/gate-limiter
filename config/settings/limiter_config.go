@@ -2,9 +2,10 @@ package settings
 
 import (
 	"gate-limiter/config/settings/validator"
-	"gopkg.in/yaml.v3"
 	"log"
 	"os"
+
+	"gopkg.in/yaml.v3"
 )
 
 type RootRateLimiterConfig struct {
@@ -67,8 +68,8 @@ func LoadRateLimitConfig(path string) (*RootRateLimiterConfig, error) {
 
 	validateConfig(config)
 
-	log.Printf("[사용전략] %20s\n", config.RateLimiter.Strategy)
-	log.Printf("[유저구분] %20s\n", config.RateLimiter.Identity.Key)
+	log.Printf("[사용전략] %-20s\n", config.RateLimiter.Strategy)
+	log.Printf("[유저구분] %-20s\n", config.RateLimiter.Identity.Key)
 	var apis []Api
 	apis = config.RateLimiter.Apis
 	log.Printf("[API 구분]\n")

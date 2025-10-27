@@ -43,7 +43,9 @@ docker run -d \
   --name gate-limiter \
   sjhn/gate-limiter:latest
 ```
-
+- NPM을 활용하는 경우
+    - 설정 파일 `config.yml`은 명령어를 실행하는 현재 디렉토리에 존재해야합니다.
+    - `gate-limiter` 커맨드로 처리율 제한기를 실행합니다.
 - docker compose를 활용하는 경우 
 	- 설정 파일 `config.yml`이 컨테이너 내부에 포함되어 있습니다.
 	- `GATE_LIMITER_CONFIG` 환경변수는 이미 `docker-compose.yml`에 작성되어 있습니다.
