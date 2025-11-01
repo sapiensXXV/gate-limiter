@@ -26,7 +26,7 @@ It is optimized for high-performance operation under heavy load and is easy to d
 homebrew install gate-limiter
 
 # NPM
-npm install -g @sapiensxxv/gate-limiter
+npm install -g @sapiensxxv/gate-limiter-cli
 
 # with docker compose
 git clone https://github.com/your-org/gate-limiter.git
