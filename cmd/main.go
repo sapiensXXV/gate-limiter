@@ -1,13 +1,14 @@
 package main
 
 import (
-	config_ratelimiter "gate-limiter/config/settings"
+	"fmt"
 	"gate-limiter/internal/app"
 	"gate-limiter/internal/metrics"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"log"
 	"net/http"
 	"os"
+
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func main() {
@@ -16,13 +17,8 @@ func main() {
 		configPath = "config.yml"
 	}
 
-	_, err := config_ratelimiter.LoadRateLimitConfig(configPath)
-	if err != nil {
-		log.Fatal("Error loading config.yml file")
-	}
-
 	// handler
-	limitHandler, err := app.InitRateLimitHandler() // 초기화가 이루어지는 시점
+	limitHandler, config, err := app.InitRateLimitHandler() // 초기화가 이루어지는 시점
 	if err != nil {
 		log.Fatal("Error initializing rate limiter handler", err)
 	}
@@ -30,5 +26,8 @@ func main() {
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", promhttp.Handler())
 	mux.Handle("/", limitHandler)
-	log.Fatal(http.ListenAndServe(":8081", metrics.WithMetrics(mux)))
+
+	portString := fmt.Sprintf(":%d", config.RateLimiter.Port)
+	err = http.ListenAndServe(portString, metrics.WithMetrics(mux))
+	log.Fatal(err)
 }

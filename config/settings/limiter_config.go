@@ -1,6 +1,7 @@
 package settings
 
 import (
+	"fmt"
 	"gate-limiter/config/settings/validator"
 	"log"
 	"os"
@@ -26,6 +27,7 @@ type RateLimiterConfig struct {
 	Client   ClientLimit    `yaml:"client"`
 	Apis     []Api          `yaml:"apis"`
 	Target   string         `yaml:"target"`
+	Port     int            `yaml:"port"`
 }
 
 type ClientIdentity struct {
@@ -68,24 +70,27 @@ func LoadRateLimitConfig(path string) (*RootRateLimiterConfig, error) {
 
 	validateConfig(config)
 
-	log.Printf("[사용전략] %-20s\n", config.RateLimiter.Strategy)
-	log.Printf("[유저구분] %-20s\n", config.RateLimiter.Identity.Key)
-	var apis []Api
-	apis = config.RateLimiter.Apis
-	log.Printf("[API 구분]\n")
-	for _, api := range apis {
-		log.Printf("  [이름] %s\n", api.Identifier)
-		log.Printf("  [경로]")
-		log.Printf("    -표현법: %s\n", api.Path.Expression)
-		log.Printf("    -값: %s\n", api.Path.Value)
-		log.Printf("  [메서드]: %s\n", api.Method)
-		log.Printf("  [제한 요청 수]: %d\n", api.Limit)
-		log.Printf("  [윈도우 초기화 시간(초)]: %d\n", api.WindowSeconds)
-		log.Printf("  [토큰 버킷 리필 주기(초)]: %d\n", api.RefillSeconds)
-		log.Printf("  [버킷 만료 시간(초)]: %d\n", api.ExpireSeconds)
-	}
+	printBanner(config)
+	fmt.Printf("strategy: %-20s\n", config.RateLimiter.Strategy)
+	fmt.Printf("category: %-20s\n", config.RateLimiter.Identity.Key)
+
+	printApiInfo(config.RateLimiter.Apis)
 
 	return config, nil
+}
+
+func printApiInfo(apis []Api) {
+	fmt.Printf("📘API registered\n")
+	for _, api := range apis {
+		fmt.Printf("  identifier       : %s\n", api.Identifier)
+		fmt.Printf("  - method           : %s\n", api.Method)
+		fmt.Printf("  - path expression  : %s\n", api.Path.Expression)
+		fmt.Printf("  - path value       : %s\n", api.Path.Value)
+		fmt.Printf("  - limit            : %d requests\n", api.Limit)
+		fmt.Printf("  - window duration  : %d sec\n", api.WindowSeconds)
+		fmt.Printf("  - token refill     : %d sec\n", api.RefillSeconds)
+		fmt.Printf("  - expiration time  : %d ms\n", api.ExpireSeconds)
+	}
 }
 
 // validateConfig 설정정보가 올바른지 검사하는 메서드
@@ -105,6 +110,13 @@ func validateConfig(config *RootRateLimiterConfig) {
 		log.Fatal("validate configuration failed: ", err)
 	}
 
+	portConfig(config)
+}
+
+func portConfig(config *RootRateLimiterConfig) {
+	if config.RateLimiter.Port == 0 {
+		config.RedisConfig.Port = 8081 // 포트 기본값 8081
+	}
 }
 
 func createValidateApis(apis []Api) []validator.ApiValidData {
@@ -128,4 +140,13 @@ func createValidateApis(apis []Api) []validator.ApiValidData {
 		result = append(result, *newApi)
 	}
 	return result
+}
+
+func printBanner(config *RootRateLimiterConfig) {
+	pid := os.Getpid()
+
+	fmt.Printf("Version %s\n", "v0.1.0")
+	fmt.Printf("Port: %d\n", config.RateLimiter.Port)
+	fmt.Printf("PID: %d\n", pid)
+	fmt.Printf("Github: https://github.com/sapiensXXV/gate-limiter\n\n")
 }

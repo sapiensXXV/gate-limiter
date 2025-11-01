@@ -10,7 +10,7 @@ import (
 	"log"
 )
 
-func InitRateLimitHandler() (*limiter.RateLimitHandler, error) {
+func InitRateLimitHandler() (*limiter.RateLimitHandler, *settings.RootRateLimiterConfig, error) {
 	var config *settings.RootRateLimiterConfig
 	config = initConfig()
 
@@ -22,7 +22,7 @@ func InitRateLimitHandler() (*limiter.RateLimitHandler, error) {
 
 	rl := initRateLimiter(&config.RateLimiter, keyGenerator, &redisClient, proxy)
 
-	return limiter.NewRateLimitHandler(rl, proxy, responder, config.RateLimiter), nil
+	return limiter.NewRateLimitHandler(rl, proxy, responder, config.RateLimiter), config, nil
 }
 
 func initConfig() *settings.RootRateLimiterConfig {
