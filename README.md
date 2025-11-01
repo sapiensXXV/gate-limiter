@@ -11,7 +11,7 @@
 [![Docker](https://img.shields.io/badge/Docker-reference-2496ED?style=flat&logo=Docker&logoColor=2496ED
 )](https://hub.docker.com/repository/docker/sjhn/gate-limiter/general)
 
-## Introduction
+## 소개
 **gate-limiter**는 API 남용을 방지하고 사용자 간 공정한 리소스 사용을 보장하기 위해 설계된, 설정 가능한 요청 처리량 제한(rate limiting) 미들웨어 입니다. Go 언어로 작성되었으며 다음 다섯가지의 처리량제한 알고리즘을 제공합니다.
 - 토큰 버킷(Token Bucket)
 - 누출 버킷(Leaky Bucket)
@@ -20,7 +20,8 @@
 - 슬라이딩 윈도우 카운터(Sliding Window Counter)
 
 배포가 간편하고 설정이 유연하며, 고부하 환경에서도 안정적으로 동작하도록 최적화되어 있습니다. Docker를 이용해 독립 실행형 서비스로 운영할 수 있으며, RESTful API를 통해 요청 허용 여부를 실시간으로 판단할 수 있습니다.
-## Installation
+
+## 설치
 ```bash
 # Homebrew
 homebrew install gate-limiter
@@ -53,13 +54,68 @@ docker run -d \
 	- 반드시 설정 파일 `config.yml`을 준비하고 해당 경로를 Docker 컨테이너에 마운트 해야 합니다.
 	- `GATE_LIMITER_CONFIG` 환경변수는 `config.yml` 파일의 컨테이너 내 경로를 가리켜야합니다.
 
-## Setting
-설정파일 config.yml 예시는 아래와 같습니다.
+## 설정 정보
+### Root Configuration (`RootRateLimiterConfig`)
+
+| Key           | Type                                    | Description                    |
+|---------------|-----------------------------------------|--------------------------------|
+| `rateLimiter` | [RateLimiterConfig](#ratelimiterconfig) | 처리율 제한(Throttling) 관련 설정 루트 객체 |
+| `redis`       | [RedisClientConfig](#redisclientconfig) | Redis 클라이언트 설정                 |
+
+### RateLimiterConfig
+
+| Key        | Type                              | Description                                                                                                              |
+|------------|-----------------------------------|--------------------------------------------------------------------------------------------------------------------------|
+| `strategy` | `string`                          | 처리량 제한 알고리즘 선택. (`token_bucket`, `leaky_bucket`, `fixed_window_counter`, `sliding_window_counter`, `sliding_window_log`) |
+| `identity` | [ClientIdentity](#clientidentity) | 요청자의 식별 방법 설정                                                                                                            |
+| `client`   | [ClientLimit](#clientlimit)       | 클라이언트 단위의 전체 요청 제한                                                                                                       |
+| `apis`     | `[Api]`                           | 특정 API 단위 요청 제한 규칙 목록                                                                                                    |
+| `target`   | `string`                          | 허용된 요청이 전달될 대상 도메인 URL                                                                                                   |
+
+### ClientIdentity
+| Key      | Type     | Description                     |
+|----------|----------|---------------------------------|
+| `key`    | `string` | 사용자 식별 기준 (예: `ipv4`, `header`) |
+| `header` | `string` | 사용자 식별 정보가 담긴 HTTP 헤더 이름        |
+
+### ClientLimit
+| Key             | Type  | Description         |
+|-----------------|-------|---------------------|
+| `limit`         | `int` | 허용 요청 수 한계치         |
+| `windowSeconds` | `int` | 요청 제한 시간 윈도우 (초 단위) |
+
+### Api
+| Key             | Type                                | Description                        |
+|-----------------|-------------------------------------|------------------------------------|
+| `identifier`    | `string`                            | API 식별자 (유일해야 함)                   |
+| `path`          | [RateLimiterPath](#ratelimiterpath) | API 경로 정의                          |
+| `method`        | `string`                            | HTTP 메서드 (GET, POST 등)             |
+| `limit`         | `int`                               | 해당 API의 요청 한도                      |
+| `windowSeconds` | `int`                               | 윈도우 시간 단위                          |
+| `refillSeconds` | `int`                               | 버킷 알고리즘의 토큰 리필 주기                  |
+| `expireSeconds` | `int`                               | 메모리/Redis에서 윈도우 또는 버킷 유지 시간 (초 단위) |
+| `target`        | `string`                            | 해당 API 호출이 전달될 도메인 (옵션)            |
+
+### RateLimiterPath
+| Key          | Type     | Description                                            |
+|--------------|----------|--------------------------------------------------------|
+| `expression` | `string` | 경로 표현 방식 (`regex`, `plain`)                            |
+| `value`      | `string` | API 경로 값. expression이 `regex`이면 정규식, `plain`이면 문자열로 지정 |
+
+### RedisClientConfig
+| Key        | Type     | Description     |
+|------------|----------|-----------------|
+| `host`     | `string` | Redis 서버 주소     |
+| `port`     | `int`    | Redis 포트 번호     |
+| `password` | `string` | Redis 인증 비밀번호   |
+| `db`       | `int`    | Redis DB 인덱스 번호 |
+
+### 설정파일 예시
+설정파일 config.yml 예시
 
 ```yml
 rateLimiter:  
   strategy: sliding_window_counter  
-  # token bucket, leaky bucket, fixed window counter, sliding window counter, sliding_window_log  
   identity:  
     key: ipv4  
     header: X-Forwarded-For  
@@ -84,42 +140,8 @@ redis:
   db: 0
 ```
 
-- **rateLimiter**: 설정의 루트. 처리율 제한의 모든 설정정보는 이곳에서 시작한다.
-	- **strategy**: 처리량 제한에서 사용할 알고리즘을 선택하는 옵션입니다.
-		- `token_bucket`: 토큰 버킷 알고리즘
-		- `leaky_bucket`: 누출 버킷 알고리즘
-		- `fixed_window_counter`: 고정 윈도우 카운터
-		- `sliding_window_log`: 이동 윈도우 로그
-		- `sliding_window_counter`: 이동 윈도우 카운터
-	- **identity**: 사용자를 어떻게 시별할지 결정하는 옵션입니다.
-		- **key**: 사용자를 식별하는 기준 
-			- `ipv4`: IPv4 주소를 기준으로 사용자를 식별합니다.
-		- **header**: 사용자 식별 정보를 얻어올 수 있는 헤더 이름
-	- **apis**: 특정 API의 처리량을 제한하는 옵션입니다. 리스트로 여러가지 API를 명시할 수 있습니다.
-		- **key**: api 식별자. 어떠한 문자열이라도 괜찮습니다. 단, 다른 API에 대해 유일해야합니다.
-		- **path**: API 경로를 표현하는 옵션입니다.
-			- **expression**: API 표현 방식. 이 값에 따라 value 옵션의 해석 방법이 결정됩니다.
-				- `regex`: 정규식 표현
-				- `plain`: 일반 텍스트 표현
-			- **value**: API 경로 표현. expression이 regex 였다면 정규식을, plain이였다면 경로 문자열을 그대로 작성하면 됩니다.
-		- **method**: HTTP 메서드
-		- **limit**: 요청 임계치. 윈도우나 버킷의 최대 사이즈가 이 옵션에서 결정됩니다.
-		- **windowSeconds**: 윈도우 시간 단위. 윈도우 관련 알고리즘을 사용하는 경우 설정해야 합니다.
-			- 고정 윈도우 카운터 알고리즘
-			- 이동 윈도우 로깅 알고리즘
-			- 이동 윈도우 카운터 알고리즘
-		- **refillSeconds**: 버킷에 토큰이 채워지는 시간단위. 버킷 관련 알고리즘을 사용하는 경우 설정해야 합니다.
-			- 토큰 버킷 알고리즘
-			- 누출 버킷 알고리즘
-		- **expireSeconds**: 사용되지 않는 버킷이나 윈도우가 메모리/Redis에서 유지되는 시간
-	- **target**: 허용된 요청이 전달될 도메인 주소
-- redis: Redis 저장소 정보
-    - **host**: 레디스 호스트 주소
-    - **port**: 레디스 포트 번호
-    - **password**: 레디스 비밀번호
-    - **db**: 데이터베이스 번호
-## Algorithm
-gate-limiter 에서는 아래 다섯가지 알고리즘을 제공합니다.
+## 알고리즘
+`gate-limiter` 에서는 아래 다섯가지 알고리즘을 제공합니다.
 - 토큰 버킷(Token Bucket)
 - 누출 버킷(Leaky Bucket)
 - 고정 윈도우 카운터(Fixed Window Counter)

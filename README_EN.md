@@ -52,54 +52,91 @@ docker run -d \
 	- The `GATE_LIMITER_CONFIG` environment variable must point to the config path inside the container.
 
 ## Setting
-An example of the config.yml file is shown below:
-```yml
-rateLimiter:  
-  strategy: sliding_window_counter  
-  # token bucket, leaky bucket, fixed window counter, sliding window counter, sliding_window_log  
-  identity:  
-    key: ipv4  
-    header: X-Forwarded-For  
-  client:
-    limit: 50  
-    windowSeconds: 60  
-  apis:
-    - identifier: comment_write  
-      path:  
-        expression: regex  
-        value: ^/api/item/\d+/comment$  
-      method: POST  
-      limit: 5  
-      windowSeconds: 60  
-      refillSeconds: 60
-      expireSeconds: 3600  
-  target: https://mywebsitedomain.com
-```
+## Configuration Information
+### Root Configuration (`RootRateLimiterConfig`)
 
-- **rateLimiter**: Root of all configuration for rate limiting.
-    - **trategy**: Selects which algorithm to use for rate limiting.
-        - `token_bucket`: Token Bucket algorithm
-        - `leaky_bucket`: Leaky Bucket algorithm
-        - `fixed_window_counter`: Fixed Window Counter
-        - `sliding_window_log`: Sliding Window Log
-        - `sliding_window_counter`: Sliding Window Counter
-    - **identity**: Determines how to identify the user.
-        - **key**: User identity source
-            - `ipv4`: Identify by IPv4 address
-        - **header**: Name of the header to extract identity info
-    - **apis**: List of API-specific rate limiting rules.
-        - **identifier**: Arbitrary unique string to identify the API
-        - **path**: Path matching method
-            - **expression**: Determines the type of match
-                regex: Regular expression
-                plain: Literal string
-            - **alue**: Actual path string or regex pattern
-        - **method**: HTTP method (e.g., `GET`, `POST`)
-        - **limit**: Request threshold
-        - **windowSeconds**: Time window (in seconds)
-        - **refillSeconds**: Token refill interval (for token/leaky buckets)
-        - **expireSeconds**: Time before unused state is cleared
-    - **target**: The destination domain for forwarded (allowed) requests
+| Key           | Type                                    | Description                                              |
+|---------------|-----------------------------------------|----------------------------------------------------------|
+| `rateLimiter` | [RateLimiterConfig](#ratelimiterconfig) | Root object for rate limiting (throttling) configuration |
+| `redis`       | [RedisClientConfig](#redisclientconfig) | Configuration for the Redis client                       |
+
+### RateLimiterConfig
+
+| Key        | Type                              | Description                                                                                                                                                 |
+|------------|-----------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `strategy` | `string`                          | Algorithm used for rate limiting. Supported values: `token_bucket`, `leaky_bucket`, `fixed_window_counter`, `sliding_window_counter`, `sliding_window_log`. |
+| `identity` | [ClientIdentity](#clientidentity) | Configuration for identifying clients or users.                                                                                                             |
+| `client`   | [ClientLimit](#clientlimit)       | Global request limit per client.                                                                                                                            |
+| `apis`     | `[Api]`                           | List of per-API request limit rules.                                                                                                                        |
+| `target`   | `string`                          | Destination domain to which allowed requests are forwarded.                                                                                                 |
+
+### ClientIdentity
+| Key      | Type     | Description                                                                  |
+|----------|----------|------------------------------------------------------------------------------|
+| `key`    | `string` | The identifier used to distinguish clients (e.g., `ipv4`, `header`).         |
+| `header` | `string` | The name of the HTTP header containing the client’s identifying information. |
+
+### ClientLimit
+| Key             | Type  | Description                                    |
+|-----------------|-------|------------------------------------------------|
+| `limit`         | `int` | Maximum number of allowed requests.            |
+| `windowSeconds` | `int` | Time window in seconds for request limitation. |
+
+### Api
+| Key             | Type                                | Description                                                                  |
+|-----------------|-------------------------------------|------------------------------------------------------------------------------|
+| `identifier`    | `string`                            | Unique identifier for the API.                                               |
+| `path`          | [RateLimiterPath](#ratelimiterpath) | Definition of the API path.                                                  |
+| `method`        | `string`                            | HTTP method (e.g., GET, POST).                                               |
+| `limit`         | `int`                               | Request limit for this API.                                                  |
+| `windowSeconds` | `int`                               | Duration of the time window in seconds.                                      |
+| `refillSeconds` | `int`                               | Token refill interval for bucket-based algorithms.                           |
+| `expireSeconds` | `int`                               | Retention time (in seconds) for inactive windows or buckets in memory/Redis. |
+| `target`        | `string`                            | Optional domain to which this API request will be forwarded.                 |
+
+### RateLimiterPath
+| Key          | Type     | Description                                                                                                    |
+|--------------|----------|----------------------------------------------------------------------------------------------------------------|
+| `expression` | `string` | Type of path expression (`regex` or `plain`).                                                                  |
+| `value`      | `string` | Path pattern. When `expression` is `regex`, use a regular expression; when `plain`, use a literal path string. |
+
+### RedisClientConfig
+| Key        | Type     | Description                    |
+|------------|----------|--------------------------------|
+| `host`     | `string` | Redis server hostname.         |
+| `port`     | `int`    | Redis port number.             |
+| `password` | `string` | Redis authentication password. |
+| `db`       | `int`    | Redis database index.          |
+
+### Example Configuration
+Example `config.yml` file:
+
+```yml
+rateLimiter:
+  strategy: sliding_window_counter
+  identity:
+    key: ipv4
+    header: X-Forwarded-For
+  client: # Global request limit per client
+    limit: 50
+    windowSeconds: 60
+  apis: # Per-API request limits
+    - identifier: comment_write
+      path:
+        expression: regex
+        value: ^/api/item/\d+/comment$
+      method: POST
+      limit: 5
+      windowSeconds: 60
+      refillSeconds: 60 # Token refill interval for token bucket algorithms
+      expireSeconds: 3600
+  target: https://mywebsitedomain.com # Domain to which approved requests are forwarded
+redis:
+  host: localhost
+  port: 6379
+  password:
+  db: 0
+
 
 ## Algorithm
 gate-limiter supports the following five rate-limiting algorithms:
