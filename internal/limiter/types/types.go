@@ -31,3 +31,14 @@ type QueuedRequest struct {
 	Writer  http.ResponseWriter
 	Request *http.Request
 }
+
+// test
+type TargetResult struct {
+	IsMatch bool
+}
+
+type AllowedResult struct {
+	Allowed       bool
+	Remaining     int64
+	RetryAfterSec int
+}
