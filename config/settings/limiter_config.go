@@ -115,7 +115,7 @@ func validateConfig(config *RootRateLimiterConfig) {
 
 func portConfig(config *RootRateLimiterConfig) {
 	if config.RateLimiter.Port == 0 {
-		config.RedisConfig.Port = 8081 // 포트 기본값 8081
+		config.RateLimiter.Port = 8081 // 포트 기본값 8081
 	}
 }
 
