@@ -61,11 +61,13 @@ docker run -d \
 
   * `config.yml` 파일이 컨테이너 내부에 포함되어 있습니다.
   * `GATE_LIMITER_CONFIG` 환경변수는 `docker-compose.yml`에 이미 정의되어 있습니다.
+  * `config.yml`의 `port`를 변경하면, `docker-compose.yml`의 포트 매핑과 `Dockerfile`의 `EXPOSE` 값도 함께 맞춰야 합니다.
 
 * **docker 이미지 단독 사용 시**
 
   * `config.yml` 파일을 준비하여 컨테이너에 마운트해야 합니다.
   * `GATE_LIMITER_CONFIG` 환경변수는 컨테이너 내부 설정 파일 경로를 가리켜야 합니다.
+  * `config.yml`의 `port`를 변경하면, `-p` 포트 매핑과 `EXPOSE` 값도 함께 맞춰야 합니다.
 
 ---
 

@@ -61,11 +61,13 @@ docker run -d \
 
   * The `config.yml` file is included inside the container.
   * The `GATE_LIMITER_CONFIG` environment variable is already defined in `docker-compose.yml`.
+  * If you change `port` in `config.yml`, you must also update the port mapping in `docker-compose.yml` and the `EXPOSE` value in the `Dockerfile`.
 
 * **Using docker image**
 
   * You must prepare a `config.yml` file and mount it into the container.
   * The `GATE_LIMITER_CONFIG` environment variable must point to the config path inside the container.
+  * If you change `port` in `config.yml`, you must also match the `-p` port mapping and the `EXPOSE` value accordingly.
 
 ---
 
