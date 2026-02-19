@@ -155,6 +155,8 @@ docker run -d \
 
 Gate Limiter는 별도 포트에서 설정 상태를 한눈에 확인할 수 있는 Admin 페이지를 제공합니다.
 
+![](./img/admin-status-page-kr.png)
+
 - **기본 URL**: `http://localhost:8082`
 - **포트 설정**: `config.yml`의 `rateLimiter.adminPort` (기본값: `8082`)
 
