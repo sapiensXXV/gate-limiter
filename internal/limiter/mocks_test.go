@@ -1,88 +1,50 @@
 package limiter
 
 import (
-	"errors"
-	"gate-limiter/internal/limiter/util"
-	"gate-limiter/pkg/redisclient"
+	"gate-limiter/internal/limiter/types"
 	"net/http"
-	"strconv"
-	"time"
 )
 
-// ==================================================
-// MockRedisClient
-// ==================================================
-type MockRedisClient struct {
-	size int
+// MockLimiter implements types.RateLimiter for testing.
+type MockLimiter struct {
+	IsTargetResult  *types.ApiMatchResult
+	IsAllowedResult types.RateLimitDecision
 }
 
-var _ redisclient.RedisClient = (*MockRedisClient)(nil)
+var _ types.RateLimiter = (*MockLimiter)(nil)
 
-func (m *MockRedisClient) RemoveOldEntries(key string, cutoff time.Time) error {
-	return nil
+func (m *MockLimiter) IsTarget(method, requestPath string) *types.ApiMatchResult {
+	return m.IsTargetResult
 }
 
-func (m *MockRedisClient) AddToSortedSet(key, member string, score time.Time) error {
-	return nil
+func (m *MockLimiter) IsAllowed(ip string, api *types.ApiMatchResult, qr *types.QueuedRequest) types.RateLimitDecision {
+	return m.IsAllowedResult
 }
 
-func (m *MockRedisClient) GetZSetSize(key string) int {
-	return m.size
+// MockProxy implements types.ProxyHandler for testing.
+type MockProxy struct {
+	Called bool
 }
 
-func (m *MockRedisClient) GetOldestEntry(key string) (redisclient.Z, error) {
-	return redisclient.Z{}, errors.New("not implemented")
+var _ types.ProxyHandler = (*MockProxy)(nil)
+
+func (m *MockProxy) ToOrigin(w http.ResponseWriter, r *http.Request, origin string) {
+	m.Called = true
+	w.WriteHeader(http.StatusOK)
 }
 
-func (m *MockRedisClient) RemoveOldEntry(key string, before time.Time) error {
-	return nil
+// MockResponder implements LimitResponder for testing.
+type MockResponder struct {
+	Called     bool
+	Remaining  int
+	RetryAfter int
 }
 
-func NewMockRedisClient() *MockRedisClient {
-	return &MockRedisClient{size: 3}
-}
+var _ LimitResponder = (*MockResponder)(nil)
 
-// ==================================================
-// MockKeyGenerator
-// ==================================================
-type MockKeyGenerator struct{}
-
-var _ util.KeyGenerator = (*MockKeyGenerator)(nil)
-
-func (m *MockKeyGenerator) Make(identifier string, category string) string {
-	return identifier + ":" + category
-}
-
-func NewMockKeyGenerator() *MockKeyGenerator {
-	return &MockKeyGenerator{}
-}
-
-// ==================================================
-// MockHttpLimitFailureResponder
-// ==================================================
-type MockHttpLimitFailureResponder struct {
-	CalcRetryAfter func(key string) int
-	RedisClient    redisclient.RedisClient
-	KeyGenerator   util.KeyGenerator
-}
-
-var _ LimitResponder = (*MockHttpLimitFailureResponder)(nil)
-
-func NewMockHttpLimitResponder() *MockHttpLimitFailureResponder {
-	return &MockHttpLimitFailureResponder{
-		CalcRetryAfter: func(key string) int {
-			return 30 // 30second left to retry
-		},
-		RedisClient:  NewMockRedisClient(),
-		KeyGenerator: NewMockKeyGenerator(),
-	}
-}
-
-func (m *MockHttpLimitFailureResponder) RespondRateLimitExceeded(w http.ResponseWriter, r *http.Request, remaining int) {
-	retryAfter := m.CalcRetryAfter(r.URL.Path) // return 30second
-
-	w.Header().Set(XRateLimitRemaining, strconv.Itoa(remaining))
-	w.Header().Set(XRateLimitReset, strconv.Itoa(5))
-	w.Header().Set(XRateLimitRetryAfter, strconv.Itoa(retryAfter))
-	w.WriteHeader(http.StatusTooManyRequests) // HTTP 429 (too many requests)
+func (m *MockResponder) RespondRateLimitExceeded(w http.ResponseWriter, r *http.Request, remaining int, retryAfter int) {
+	m.Called = true
+	m.Remaining = remaining
+	m.RetryAfter = retryAfter
+	w.WriteHeader(http.StatusTooManyRequests)
 }

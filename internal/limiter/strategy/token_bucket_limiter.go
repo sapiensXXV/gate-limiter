@@ -1,11 +1,9 @@
 package strategy
 
 import (
-	"errors"
 	"gate-limiter/config/settings"
 	"gate-limiter/internal/limiter/types"
 	"gate-limiter/internal/limiter/util"
-	"github.com/redis/go-redis/v9"
 	"log"
 	"time"
 )
@@ -17,6 +15,42 @@ type TokenBucketLimiter struct {
 }
 
 var _ types.RateLimiter = (*TokenBucketLimiter)(nil)
+
+// tokenBucketLuaScript 는 토큰 버킷의 조회·리필·소비를 원자적으로 처리하는 Lua 스크립트이다.
+// GET→수정→SET 패턴의 Race Condition 을 방지한다.
+const tokenBucketLuaScript = `
+local key = KEYS[1]
+local max_tokens = tonumber(ARGV[1])
+local refill_sec = tonumber(ARGV[2])
+local expire_sec = tonumber(ARGV[3])
+local now_sec    = tonumber(ARGV[4])
+
+local data = redis.call('HMGET', key, 'tokens', 'last_refill')
+local tokens      = tonumber(data[1])
+local last_refill = tonumber(data[2])
+
+if tokens == nil then
+    tokens      = max_tokens
+    last_refill = now_sec
+end
+
+if (now_sec - last_refill) >= refill_sec then
+    tokens      = max_tokens
+    last_refill = now_sec
+end
+
+local retry_after = (last_refill + refill_sec) - now_sec
+if retry_after < 0 then retry_after = 0 end
+
+if tokens > 0 then
+    tokens = tokens - 1
+    redis.call('HMSET', key, 'tokens', tokens, 'last_refill', last_refill)
+    redis.call('EXPIRE', key, expire_sec)
+    return {1, tokens, retry_after}
+else
+    return {0, 0, retry_after}
+end
+`
 
 func NewTokenBucketLimiter(
 	keyGenerator util.KeyGenerator,
@@ -58,27 +92,18 @@ func (l *TokenBucketLimiter) IsTarget(method, requestPath string) *types.ApiMatc
 
 func (l *TokenBucketLimiter) IsAllowed(ip string, api *types.ApiMatchResult, _ *types.QueuedRequest) types.RateLimitDecision {
 	key := l.KeyGenerator.Make(ip, api.Identifier)
-	b, err := l.RedisClient.GetObject(key)
-	if errors.Is(err, redis.Nil) {
-		// 버킷이 없는 경우 새로운 버킷을 만들고 마지막 토큰 리필 시간을 현재로 설정한다.
-		newBucket := types.NewTokenBucket(api.Limit)
-		newBucket.LastRefillTime = time.Now()
-		newBucket.Token-- // 토큰 한개 소비
-		if err := l.RedisClient.SetObject(key, newBucket, api.ExpireSeconds); err != nil {
-			log.Printf("redisclient value setting error: key=[%s], value=[%v], err=%v", key, newBucket, err)
-			return types.RateLimitDecision{
-				Allowed:       false,
-				Remaining:     0,
-				RetryAfterSec: 0,
-			}
-		}
-		return types.RateLimitDecision{
-			Allowed:       true,
-			Remaining:     newBucket.Token,
-			RetryAfterSec: l.calcRetryAfter(newBucket, api), // TODO 재요청 가능시간 계산
-		}
-	} else if err != nil {
-		log.Printf("redisclient Get error key:[%s]\n, err:%v\n", key, err)
+	now := time.Now().Unix()
+
+	result, err := l.RedisClient.Eval(
+		tokenBucketLuaScript,
+		[]string{key},
+		api.Limit,
+		api.RefillSeconds,
+		api.ExpireSeconds,
+		now,
+	)
+	if err != nil {
+		log.Printf("token bucket eval error: key=[%s], err=%v", key, err)
 		return types.RateLimitDecision{
 			Allowed:       false,
 			Remaining:     0,
@@ -86,9 +111,9 @@ func (l *TokenBucketLimiter) IsAllowed(ip string, api *types.ApiMatchResult, _ *
 		}
 	}
 
-	bb, ok := b.(*types.TokenBucket)
-	if !ok {
-		log.Printf("Invalid type casting for key [%s]\n", key)
+	vals, ok := result.([]interface{})
+	if !ok || len(vals) < 3 {
+		log.Printf("token bucket: unexpected result format: %v", result)
 		return types.RateLimitDecision{
 			Allowed:       false,
 			Remaining:     0,
@@ -96,48 +121,13 @@ func (l *TokenBucketLimiter) IsAllowed(ip string, api *types.ApiMatchResult, _ *
 		}
 	}
 
-	// 버킷이 있는 경우
-	// 1. 마지막으로 버킷이 채워진 시간을 확인하고 토큰을 리필합니다.
-	refillTokenIfNeeded(bb, api.Limit, api.RefillSeconds)
+	allowed := vals[0].(int64) == 1
+	remaining := int(vals[1].(int64))
+	retryAfter := int(vals[2].(int64))
 
-	// 토큰에 여유가 있는지 확인한다
-	if bb.Token > 0 {
-		bb.Token-- // 토큰을 한개 사용한다.
-		err := l.RedisClient.SetObject(key, bb, api.ExpireSeconds)
-		if err != nil {
-			log.Printf("Redis SetObject Error:%v\n", err)
-			return types.RateLimitDecision{
-				Allowed:       false,
-				Remaining:     0,
-				RetryAfterSec: 0,
-			}
-		}
-		return types.RateLimitDecision{
-			Allowed:       true,
-			Remaining:     bb.Token,
-			RetryAfterSec: l.calcRetryAfter(bb, api),
-		}
-	}
-	log.Printf("Not enough token: user=[%s]", key)
 	return types.RateLimitDecision{
-		Allowed:       false,
-		Remaining:     0,
-		RetryAfterSec: 0,
+		Allowed:       allowed,
+		Remaining:     remaining,
+		RetryAfterSec: retryAfter,
 	}
-}
-
-func refillTokenIfNeeded(b *types.TokenBucket, limit int, refillSeconds int) {
-	if time.Since(b.LastRefillTime).Seconds() > float64(refillSeconds) {
-		b.Token = limit
-		b.LastRefillTime = time.Now()
-	}
-}
-
-func (l *TokenBucketLimiter) calcRetryAfter(b *types.TokenBucket, api *types.ApiMatchResult) int {
-	nextRefillTime := b.LastRefillTime.Add(time.Duration(api.RefillSeconds) * time.Second)
-	diff := nextRefillTime.Sub(time.Now())
-	if diff <= 0 {
-		return 0
-	}
-	return int(diff.Seconds())
 }

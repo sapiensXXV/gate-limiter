@@ -84,7 +84,7 @@ func (l *FixedWindowCounterLimiter) IsAllowed(ip string, api *types.ApiMatchResu
 	// Lua 스크립트로 INCR과 EXPIRE를 원자적으로 한번에 실행
 	result, err := l.RedisClient.Eval(fixedWindowLuaScript, []string{key}, api.WindowSeconds)
 	if err != nil {
-		log.Printf("redis eval err: $v\n", err)
+		log.Printf("redis eval err: %v\n", err)
 		return types.RateLimitDecision{Allowed: false}
 	}
 

@@ -12,15 +12,11 @@ import (
 	"log"
 )
 
-func InitRateLimitHandler(configPath string) (*limiter.RateLimitHandler, *settings.RootRateLimiterConfig, error) {
+func InitRateLimitHandler(ctx context.Context, configPath string) (*limiter.RateLimitHandler, *settings.RootRateLimiterConfig, error) {
 	config, err := initConfig(configPath)
 	if err != nil {
 		return nil, nil, err
 	}
-
-	baseCtx := context.Background()
-	ctx, cancel := context.WithCancel(baseCtx)
-	defer cancel()
 
 	redisClient := NewRedisClient(&config.RedisConfig)
 	keyGenerator := NewKeyGenerator(config.RateLimiter)
@@ -33,7 +29,7 @@ func InitRateLimitHandler(configPath string) (*limiter.RateLimitHandler, *settin
 
 	rl := initRateLimiter(&config.RateLimiter, keyGenerator, &redisClient, ctx)
 
-	return limiter.NewRateLimitHandler(rl, proxy, responder, config.RateLimiter), config, nil
+	return limiter.NewRateLimitHandler(rl, proxy, responder, config.RateLimiter, redisClient), config, nil
 }
 
 func initConfig(configPath string) (*settings.RootRateLimiterConfig, error) {

@@ -1,12 +1,15 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"gate-limiter/internal/app"
 	"gate-limiter/internal/metrics"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -17,8 +20,11 @@ func main() {
 		configPath = "config.yml"
 	}
 
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
 	// handler
-	limitHandler, config, err := app.InitRateLimitHandler(configPath) // 초기화가 이루어지는 시점
+	limitHandler, config, err := app.InitRateLimitHandler(ctx, configPath) // 초기화가 이루어지는 시점
 	if err != nil {
 		log.Fatal("Error initializing rate limiter handler", err)
 	}
