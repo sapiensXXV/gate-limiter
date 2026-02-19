@@ -27,12 +27,12 @@ func NewLeakyBucketLimiter(
 func (l *LeakyBucketLimiter) IsTarget(method, requestPath string) *types.ApiMatchResult {
 	for _, api := range l.Config.Apis {
 		pathExpression := api.Path.Expression
-		requestPath := api.Path.Value
+		targetPath := api.Path.Value
 		var isPathMatch bool
 		if pathExpression == regex {
-			isPathMatch = util.MatchRegex(requestPath, requestPath)
+			isPathMatch = util.MatchRegex(requestPath, targetPath)
 		} else if pathExpression == plain {
-			isPathMatch = util.MatchPlain(requestPath, requestPath)
+			isPathMatch = util.MatchPlain(requestPath, targetPath)
 		} else {
 			log.Println("cannot identify path expression")
 		}

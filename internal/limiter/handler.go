@@ -1,20 +1,26 @@
 package limiter
 
 import (
+	"context"
+	"fmt"
 	"gate-limiter/config/settings"
+	"gate-limiter/internal/limiter/store"
 	"gate-limiter/internal/limiter/types"
 	"gate-limiter/internal/metrics"
 	"log"
+	"math"
 	"net/http"
+	"time"
 )
 
 const XForwardedFor = "X-Forwarded-For"
 
 type RateLimitHandler struct {
-	Limiter   types.RateLimiter
-	Proxy     types.ProxyHandler
-	Responder LimitResponder
-	Config    settings.RateLimiterConfig
+	Limiter     types.RateLimiter
+	Proxy       types.ProxyHandler
+	Responder   LimitResponder
+	Config      settings.RateLimiterConfig
+	ClientStore store.CounterStore
 }
 
 var _ http.Handler = (*RateLimitHandler)(nil)
@@ -24,31 +30,44 @@ func NewRateLimitHandler(
 	proxy types.ProxyHandler,
 	responder LimitResponder,
 	config settings.RateLimiterConfig,
+	clientStore store.CounterStore,
 ) *RateLimitHandler {
 	return &RateLimitHandler{
-		Limiter:   limiter,
-		Proxy:     proxy,
-		Responder: responder,
-		Config:    config,
+		Limiter:     limiter,
+		Proxy:       proxy,
+		Responder:   responder,
+		Config:      config,
+		ClientStore: clientStore,
 	}
 }
 
 func (h *RateLimitHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if h.Config.Target == "" {
+		h.respondDefaultPage(w)
+		return
+	}
+
 	if h.Limiter == nil {
 		log.Println("RateLimitHandler.Limiter is nil!")
 		return
 	}
-	result := h.Limiter.IsTarget(r.Method, r.URL.Path)
+
 	policy := h.Config.Strategy
+	clientID := r.Header.Get(h.Config.Identity.Header)
+
+	if exceeded, _, retryAfter := h.isClientLimitExceeded(clientID); exceeded {
+		h.Responder.RespondRateLimitExceeded(w, r, 0, retryAfter)
+		metrics.ObserveBlocked(policy, "client_limit_exceeded")
+		return
+	}
+
+	result := h.Limiter.IsTarget(r.Method, r.URL.Path)
 
 	if !result.IsMatch {
 		h.Proxy.ToOrigin(w, r, h.Config.Target)
 		return
 	}
 
-	clientID := r.Header.Get(h.Config.Identity.Header)
-
-	// leaky_bucket은 내부적으로 queueing/wait를 하기 때문에 Request Context를 넘겨준다
 	var queued *types.QueuedRequest
 	if h.Config.Strategy == "leaky_bucket" {
 		queued = &types.QueuedRequest{
@@ -65,4 +84,76 @@ func (h *RateLimitHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	metrics.ObserveAllowed(policy)
 
 	h.Proxy.ToOrigin(w, r, h.Config.Target)
+}
+
+func (h *RateLimitHandler) isClientLimitExceeded(clientID string) (exceeded bool, remaining int, retryAfterSec int) {
+	if h.Config.Client.Limit <= 0 || h.Config.Client.WindowSeconds <= 0 || h.ClientStore == nil {
+		return false, 0, 0
+	}
+
+	windowDuration := time.Duration(h.Config.Client.WindowSeconds) * time.Second
+	windowStart := time.Now().Truncate(windowDuration)
+	key := fmt.Sprintf("client:%s:%d", clientID, windowStart.Unix())
+
+	result, err := h.ClientStore.IncrementAndGet(context.TODO(), key, h.Config.Client.WindowSeconds)
+	if err != nil {
+		log.Printf("client limit check error: %v", err)
+		return false, 0, 0
+	}
+
+	if result.Count > int64(h.Config.Client.Limit) {
+		retryAt := windowStart.Add(windowDuration)
+		wait := time.Until(retryAt)
+		sec := int(math.Ceil(wait.Seconds()))
+		if sec < 0 {
+			sec = 0
+		}
+		return true, 0, sec
+	}
+
+	return false, h.Config.Client.Limit - int(result.Count), 0
+}
+
+func (h *RateLimitHandler) respondDefaultPage(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintf(w, `<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gate Limiter</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+    .container { background: #fff; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); padding: 48px; max-width: 560px; width: 90%%; }
+    h1 { font-size: 28px; margin-bottom: 8px; }
+    .subtitle { color: #888; margin-bottom: 32px; }
+    .status { background: #fff8e1; border-left: 4px solid #ffc107; padding: 16px; border-radius: 4px; margin-bottom: 24px; }
+    .status strong { color: #f57f17; }
+    p { line-height: 1.7; margin-bottom: 12px; }
+    code { background: #f0f0f0; padding: 2px 6px; border-radius: 4px; font-size: 14px; }
+    pre { background: #1e1e1e; color: #d4d4d4; padding: 16px; border-radius: 8px; overflow-x: auto; font-size: 13px; line-height: 1.6; margin: 16px 0; }
+    pre .key { color: #9cdcfe; }
+    pre .value { color: #ce9178; }
+    pre .comment { color: #6a9955; }
+    .info { font-size: 13px; color: #aaa; margin-top: 24px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Gate Limiter</h1>
+    <p class="subtitle">API Rate Limiting Gateway</p>
+    <div class="status">
+      <strong>target</strong>이 설정되지 않았습니다.
+    </div>
+    <p><code>config.yml</code> 파일에서 요청을 전달할 대상 도메인을 설정해 주세요.</p>
+    <pre><span class="key">rateLimiter</span>:
+  <span class="comment"># ... 다른 설정 ...</span>
+  <span class="key">target</span>: <span class="value">"https://your-domain.com"</span></pre>
+    <p>설정을 변경한 후 서버를 재시작하면 해당 도메인으로 요청이 전달됩니다.</p>
+    <p class="info">port: %d</p>
+  </div>
+</body>
+</html>`, h.Config.Port)
 }

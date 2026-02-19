@@ -1,75 +1,15 @@
 package strategy
 
 import (
-	"errors"
 	"gate-limiter/config/settings"
+	storeredis "gate-limiter/internal/limiter/store/redis"
 	"gate-limiter/internal/limiter/types"
 	"gate-limiter/internal/limiter/util"
-	"github.com/redis/go-redis/v9"
-	"sync"
 	"testing"
-	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/stretchr/testify/assert"
 )
-
-// 간단한 fake RedisClient 구현 (이 테스트에서 필요한 부분만)
-type FakeRedisClient struct {
-	mu         sync.Mutex
-	store      map[string]int64
-	errorOnKey string // 이 키에 대해서는 Incr 시 에러를 리턴
-}
-
-func NewFakeRedisClient() *FakeRedisClient {
-	return &FakeRedisClient{
-		store: make(map[string]int64),
-	}
-}
-
-func (f *FakeRedisClient) Get(key string) (interface{}, error)                           { return nil, nil }
-func (f *FakeRedisClient) Set(key string, value interface{}, expiration int) error       { return nil }
-func (f *FakeRedisClient) GetObject(key string) (interface{}, error)                     { return nil, nil }
-func (f *FakeRedisClient) SetObject(key string, value interface{}, expiration int) error { return nil }
-func (f *FakeRedisClient) RemoveOldEntries(key string, cutoff time.Time) error           { return nil }
-func (f *FakeRedisClient) AddToSortedSet(key, member string, score time.Time) error      { return nil }
-func (f *FakeRedisClient) GetOldestEntry(key string) (redis.Z, error)                    { return redis.Z{}, nil }
-func (f *FakeRedisClient) RemoveOldEntry(key string, before time.Time) error             { return nil }
-
-func (f *FakeRedisClient) Incr(key string) (int64, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	if f.errorOnKey != "" && key == f.errorOnKey {
-		return 0, errors.New("simulated incr error")
-	}
-	f.store[key]++
-	return f.store[key], nil
-}
-
-func (f *FakeRedisClient) Expire(key string, seconds int) {
-	// 테스트에서는 TTL 무시
-}
-
-func (f *FakeRedisClient) ZRemRangeByScore(key string, from string, to string) error { return nil }
-func (f *FakeRedisClient) ZSetSize(key string) int                                   { return 0 }
-func (f *FakeRedisClient) ZCount(key string, min string, max string) (int, error) {
-	return 0, nil
-}
-func (f *FakeRedisClient) HGetObject(key string) (interface{}, error) { return nil, nil }
-func (f *FakeRedisClient) HSetObject(key string, value interface{}, expiration int) error {
-	return nil
-}
-
-// helper: 간단한 ApiMatchResult 생성
-func makeAPIMatchResult() *types.ApiMatchResult {
-	return &types.ApiMatchResult{
-		IsMatch:       true,
-		Identifier:    "comment_write",
-		Limit:         2,
-		WindowSeconds: 2, // 짧게 잡아서 테스트 빠르게
-		ExpireSeconds: 3600,
-		Target:        "https://example.com",
-	}
-}
 
 func TestFixedWindowCounterLimiter_IsTarget(t *testing.T) {
 	cfg := settings.RateLimiterConfig{
@@ -97,8 +37,9 @@ func TestFixedWindowCounterLimiter_IsTarget(t *testing.T) {
 	}
 
 	keyGen := util.NewIpKeyGenerator(settings.RateLimiterConfig{Strategy: "fixed_window_counter"})
-	redisClient := NewFakeRedisClient()
-	limiter := NewFixedWindowCounterLimiter(keyGen, redisClient, cfg)
+	_, rc := newTestRedisClient(t)
+	s := storeredis.NewCounterStore(rc)
+	limiter := NewFixedWindowCounterLimiter(keyGen, s, cfg)
 
 	tests := []struct {
 		name          string
@@ -158,59 +99,52 @@ func TestFixedWindowCounterLimiter_IsTarget(t *testing.T) {
 }
 
 func TestFixedWindowCounterLimiter_IsAllowed(t *testing.T) {
-	apiResult := makeAPIMatchResult()
-	// key generator uses matching strategy so key strings align
 	keyGen := util.NewIpKeyGenerator(settings.RateLimiterConfig{Strategy: "fixed_window_counter"})
 
 	t.Run("allowed until limit then blocked", func(t *testing.T) {
-		fakeRedis := NewFakeRedisClient()
-		limiterIface := NewFixedWindowCounterLimiter(keyGen, fakeRedis, settings.RateLimiterConfig{})
-		// underlying struct assertion for access (optional)
-		fwc := limiterIface.(*FixedWindowCounterLimiter)
+		_, rc := newTestRedisClient(t)
+		s := storeredis.NewCounterStore(rc)
+		limiter := NewFixedWindowCounterLimiter(keyGen, s, settings.RateLimiterConfig{})
 
-		// first request: allowed
-		decision1 := fwc.IsAllowed("127.0.0.1", apiResult, nil)
-		if !decision1.Allowed {
-			t.Fatalf("expected first request allowed, got %+v", decision1)
-		}
-		if decision1.Remaining != apiResult.Limit-1 {
-			t.Errorf("expected remaining %d, got %d", apiResult.Limit-1, decision1.Remaining)
+		api := &types.ApiMatchResult{
+			IsMatch:       true,
+			Identifier:    "test_api",
+			Limit:         2,
+			WindowSeconds: 60,
+			ExpireSeconds: 3600,
 		}
 
-		// second request: allowed, remaining should be zero
-		decision2 := fwc.IsAllowed("127.0.0.1", apiResult, nil)
-		if !decision2.Allowed {
-			t.Fatalf("expected second request allowed, got %+v", decision2)
-		}
-		if decision2.Remaining != 0 {
-			t.Errorf("expected remaining 0, got %d", decision2.Remaining)
-		}
+		d1 := limiter.IsAllowed("127.0.0.1", api, nil)
+		assert.True(t, d1.Allowed)
+		assert.Equal(t, 1, d1.Remaining)
 
-		// third request: over limit -> blocked
-		decision3 := fwc.IsAllowed("127.0.0.1", apiResult, nil)
-		if decision3.Allowed {
-			t.Fatalf("expected third request denied, got %+v", decision3)
-		}
-		if decision3.Remaining != 0 {
-			t.Errorf("expected remaining 0 when blocked, got %d", decision3.Remaining)
-		}
-		if decision3.RetryAfterSec < 0 {
-			t.Errorf("expected non-negative RetryAfterSec, got %d", decision3.RetryAfterSec)
-		}
+		d2 := limiter.IsAllowed("127.0.0.1", api, nil)
+		assert.True(t, d2.Allowed)
+		assert.Equal(t, 0, d2.Remaining)
+
+		d3 := limiter.IsAllowed("127.0.0.1", api, nil)
+		assert.False(t, d3.Allowed)
+		assert.Equal(t, 0, d3.Remaining)
+		assert.GreaterOrEqual(t, d3.RetryAfterSec, 0)
 	})
 
-	t.Run("redis error causes denial", func(t *testing.T) {
-		fakeRedis := NewFakeRedisClient()
-		// 특정 키에 에러를 내도록 설정
-		key := util.NewIpKeyGenerator(settings.RateLimiterConfig{Strategy: "fixed_window_counter"}).Make("127.0.0.1", apiResult.Identifier)
-		fakeRedis.errorOnKey = key
+	t.Run("different IPs have separate counters", func(t *testing.T) {
+		_, rc := newTestRedisClient(t)
+		s := storeredis.NewCounterStore(rc)
+		limiter := NewFixedWindowCounterLimiter(keyGen, s, settings.RateLimiterConfig{})
 
-		limiterIface := NewFixedWindowCounterLimiter(keyGen, fakeRedis, settings.RateLimiterConfig{})
-		fwc := limiterIface.(*FixedWindowCounterLimiter)
-
-		decision := fwc.IsAllowed("127.0.0.1", apiResult, nil)
-		if decision.Allowed {
-			t.Errorf("expected denial when redis Incr fails, got allowed")
+		api := &types.ApiMatchResult{
+			IsMatch:       true,
+			Identifier:    "test_api",
+			Limit:         1,
+			WindowSeconds: 60,
+			ExpireSeconds: 3600,
 		}
+
+		d1 := limiter.IsAllowed("10.0.0.1", api, nil)
+		assert.True(t, d1.Allowed)
+
+		d2 := limiter.IsAllowed("10.0.0.2", api, nil)
+		assert.True(t, d2.Allowed, "다른 IP는 별도 카운터를 가져야 한다")
 	})
 }

@@ -1,7 +1,9 @@
 package strategy
 
 import (
+	"context"
 	"gate-limiter/config/settings"
+	"gate-limiter/internal/limiter/store"
 	"gate-limiter/internal/limiter/types"
 	"gate-limiter/internal/limiter/util"
 	"log"
@@ -11,28 +13,20 @@ import (
 
 type FixedWindowCounterLimiter struct {
 	KeyGenerator util.KeyGenerator
-	RedisClient  types.RedisClient
+	Store        store.CounterStore
 	Config       settings.RateLimiterConfig
 }
 
 var _ types.RateLimiter = (*FixedWindowCounterLimiter)(nil)
 
-const fixedWindowLuaScript = `
-local current = redis.call("INCR", KEYS[1])
-if tonumber(current) == 1 then
-	redis.call("EXPIRE", KEYS[1], ARGV[1])
-end
-return current
-`
-
 func NewFixedWindowCounterLimiter(
 	keyGenerator util.KeyGenerator,
-	redisClient types.RedisClient,
+	counterStore store.CounterStore,
 	config settings.RateLimiterConfig,
 ) types.RateLimiter {
 	return &FixedWindowCounterLimiter{
 		KeyGenerator: keyGenerator,
-		RedisClient:  redisClient,
+		Store:        counterStore,
 		Config:       config,
 	}
 }
@@ -52,7 +46,6 @@ func (l *FixedWindowCounterLimiter) IsTarget(requestMethod, requestURL string) *
 		}
 
 		if result && api.Method == requestMethod {
-			// 통과
 			return &types.ApiMatchResult{
 				IsMatch:       true,
 				Identifier:    api.Identifier,
@@ -68,34 +61,16 @@ func (l *FixedWindowCounterLimiter) IsTarget(requestMethod, requestURL string) *
 }
 
 func (l *FixedWindowCounterLimiter) IsAllowed(ip string, api *types.ApiMatchResult, _ *types.QueuedRequest) types.RateLimitDecision {
-	//log.Printf("ip_address: [%s]를 검사합니다.", ip)
-	//// time.Time.Truncate(d) 메서드는 현재 시간을 d단위로 내림 처리 해주는 역할을 한다.
-	//windowStart := time.Now().Truncate(time.Duration(api.WindowSeconds) * time.Second)
-	//key := l.KeyGenerator.Make(ip, api.Identifier) // redis_key
-	//
-	//cnt, err := l.RedisClient.Incr(key)
-	//if err != nil {
-	//	return types.RateLimitDecision{Allowed: false}
-	//}
-
 	windowStart := time.Now().Truncate(time.Duration(api.WindowSeconds) * time.Second)
 	key := l.KeyGenerator.Make(ip, api.Identifier)
 
-	// Lua 스크립트로 INCR과 EXPIRE를 원자적으로 한번에 실행
-	result, err := l.RedisClient.Eval(fixedWindowLuaScript, []string{key}, api.WindowSeconds)
+	result, err := l.Store.IncrementAndGet(context.TODO(), key, api.WindowSeconds)
 	if err != nil {
-		log.Printf("redis eval err: $v\n", err)
+		log.Printf("counter store error: %v\n", err)
 		return types.RateLimitDecision{Allowed: false}
 	}
 
-	cnt := result.(int64)
-
-	// 최초 생성 때만 만료시간 세팅
-	if cnt == 1 {
-		l.RedisClient.Expire(key, api.WindowSeconds)
-	}
-
-	if cnt > int64(api.Limit) {
+	if result.Count > int64(api.Limit) {
 		retryAt := windowStart.Add(time.Duration(api.WindowSeconds) * time.Second)
 		wait := retryAt.Sub(time.Now())
 		sec := int(math.Ceil(wait.Seconds()))
@@ -112,7 +87,7 @@ func (l *FixedWindowCounterLimiter) IsAllowed(ip string, api *types.ApiMatchResu
 
 	return types.RateLimitDecision{
 		Allowed:       true,
-		Remaining:     api.Limit - int(cnt),
+		Remaining:     api.Limit - int(result.Count),
 		RetryAfterSec: 0,
 	}
 }
