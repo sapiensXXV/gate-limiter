@@ -33,6 +33,17 @@ func (m *MockProxy) ToOrigin(w http.ResponseWriter, r *http.Request, origin stri
 	w.WriteHeader(http.StatusOK)
 }
 
+// MockIdentifier implements ClientIdentifier for testing.
+type MockIdentifier struct {
+	ClientID string
+}
+
+var _ ClientIdentifier = (*MockIdentifier)(nil)
+
+func (m *MockIdentifier) Identify(_ http.ResponseWriter, _ *http.Request) string {
+	return m.ClientID
+}
+
 // MockResponder implements LimitResponder for testing.
 type MockResponder struct {
 	Called     bool

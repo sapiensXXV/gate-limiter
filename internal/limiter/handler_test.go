@@ -30,15 +30,14 @@ func TestServeHTTP_NonMatchingRequest_Forwarded(t *testing.T) {
 		proxy,
 		&MockResponder{},
 		settings.RateLimiterConfig{
-			Identity: settings.ClientIdentity{Header: "X-Forwarded-For"},
-			Target:   "http://example.com",
+			Target: "http://example.com",
 		},
 		nil,
+		&MockIdentifier{ClientID: "127.0.0.1"},
 	)
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest("GET", "/unknown", nil)
-	r.Header.Set("X-Forwarded-For", "127.0.0.1")
 	handler.ServeHTTP(w, r)
 
 	assert.True(t, proxy.Called, "매칭되지 않는 요청은 origin으로 포워딩되어야 한다")
@@ -55,15 +54,14 @@ func TestServeHTTP_MatchingRequest_Allowed(t *testing.T) {
 		proxy,
 		responder,
 		settings.RateLimiterConfig{
-			Identity: settings.ClientIdentity{Header: "X-Forwarded-For"},
-			Target:   "http://example.com",
+			Target: "http://example.com",
 		},
 		nil,
+		&MockIdentifier{ClientID: "127.0.0.1"},
 	)
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest("POST", "/api/test", nil)
-	r.Header.Set("X-Forwarded-For", "127.0.0.1")
 	handler.ServeHTTP(w, r)
 
 	assert.True(t, proxy.Called, "허용된 요청은 origin으로 포워딩되어야 한다")
@@ -81,15 +79,14 @@ func TestServeHTTP_MatchingRequest_Denied(t *testing.T) {
 		proxy,
 		responder,
 		settings.RateLimiterConfig{
-			Identity: settings.ClientIdentity{Header: "X-Forwarded-For"},
-			Target:   "http://example.com",
+			Target: "http://example.com",
 		},
 		nil,
+		&MockIdentifier{ClientID: "127.0.0.1"},
 	)
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest("POST", "/api/test", nil)
-	r.Header.Set("X-Forwarded-For", "127.0.0.1")
 	handler.ServeHTTP(w, r)
 
 	assert.False(t, proxy.Called, "거부된 요청은 origin으로 포워딩되면 안 된다")
@@ -113,15 +110,14 @@ func TestServeHTTP_ClientLimitExceeded(t *testing.T) {
 		proxy,
 		responder,
 		settings.RateLimiterConfig{
-			Identity: settings.ClientIdentity{Header: "X-Forwarded-For"},
-			Target:   "http://example.com",
-			Client:   settings.ClientLimit{Limit: 2, WindowSeconds: 60},
+			Target: "http://example.com",
+			Client: settings.ClientLimit{Limit: 2, WindowSeconds: 60},
 		},
 		counterStore,
+		&MockIdentifier{ClientID: "127.0.0.1"},
 	)
 
 	r := httptest.NewRequest("POST", "/api/test", nil)
-	r.Header.Set("X-Forwarded-For", "127.0.0.1")
 
 	// 처음 2개 요청은 통과해야 한다
 	for i := 0; i < 2; i++ {
