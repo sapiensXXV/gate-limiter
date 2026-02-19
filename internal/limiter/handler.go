@@ -38,7 +38,7 @@ func (h *RateLimitHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		log.Println("RateLimitHandler.Limiter is nil!")
 		return
 	}
-	result := h.Limiter.IsTarget(r.Method, r.URL.String())
+	result := h.Limiter.IsTarget(r.Method, r.URL.Path)
 	policy := h.Config.Strategy
 
 	if !result.IsMatch {
