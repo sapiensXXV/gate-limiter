@@ -53,7 +53,7 @@ func (l *LeakyBucketLimiter) IsAllowed(
 	api *types.ApiMatchResult,
 	queuedRequest *types.QueuedRequest,
 ) types.RateLimitDecision {
-	result := l.Manager.AddRequest(api.Identifier, ip, *queuedRequest, *api)
+	result := l.Manager.Enqueue(api.Identifier, ip, *queuedRequest, *api)
 	// 큐에 여유공간이 있는지 확인하는 작업이 여기서는 채널에 데이터를 넣을 수 있는지 여부에 따라 결정된다.
 	// 그 결과가 result 로 반환된다.
 	freeSpace, err := l.Manager.CountBucketFreeCapacity(api.Identifier, ip)

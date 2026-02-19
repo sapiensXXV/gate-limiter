@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"gate-limiter/config/settings"
 	"gate-limiter/internal/limiter"
@@ -17,6 +18,10 @@ func InitRateLimitHandler(configPath string) (*limiter.RateLimitHandler, *settin
 		return nil, nil, err
 	}
 
+	baseCtx := context.Background()
+	ctx, cancel := context.WithCancel(baseCtx)
+	defer cancel()
+
 	redisClient := NewRedisClient(&config.RedisConfig)
 	keyGenerator := NewKeyGenerator(config.RateLimiter)
 	if keyGenerator == nil {
@@ -26,7 +31,7 @@ func InitRateLimitHandler(configPath string) (*limiter.RateLimitHandler, *settin
 	responder := limiter.NewHttpLimitResponder(redisClient, keyGenerator, config.RateLimiter)
 	proxy := limiter.NewDefaultProxyHandler()
 
-	rl := initRateLimiter(&config.RateLimiter, keyGenerator, &redisClient)
+	rl := initRateLimiter(&config.RateLimiter, keyGenerator, &redisClient, ctx)
 
 	return limiter.NewRateLimitHandler(rl, proxy, responder, config.RateLimiter), config, nil
 }
@@ -48,6 +53,7 @@ func initRateLimiter(
 	config *settings.RateLimiterConfig,
 	keyGenerator *util.IpKeyGenerator,
 	redisClient *types.RedisClient,
+	ctx context.Context,
 ) types.RateLimiter {
 	var rl types.RateLimiter
 	log.Printf("selected strategy: [%s]\n", config.Strategy)
@@ -55,7 +61,7 @@ func initRateLimiter(
 	case "token_bucket":
 		rl = strategy.NewTokenBucketLimiter(keyGenerator, *redisClient, *config)
 	case "leaky_bucket":
-		leakyBucketManager := strategy.NewLeakyBucketManager(config.Apis)
+		leakyBucketManager := strategy.NewLeakyBucketManager(ctx, config.Apis)
 		rl = strategy.NewLeakyBucketLimiter(*config, leakyBucketManager)
 	case "fixed_window_counter":
 		rl = strategy.NewFixedWindowCounterLimiter(keyGenerator, *redisClient, *config)

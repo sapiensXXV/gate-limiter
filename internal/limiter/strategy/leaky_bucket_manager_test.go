@@ -37,8 +37,8 @@ func TestLeakyBucketManager_AddRequest(t *testing.T) {
 				handler: tt.fields.handler,
 				config:  tt.fields.config,
 			}
-			if got := m.AddRequest(tt.args.apiIdentifier, tt.args.key, tt.args.req, tt.args.api); got != tt.want {
-				t.Errorf("AddRequest() = %v, want %v", got, tt.want)
+			if got := m.Enqueue(tt.args.apiIdentifier, tt.args.key, tt.args.req, tt.args.api); got != tt.want {
+				t.Errorf("Enqueue() = %v, want %v", got, tt.want)
 			}
 		})
 	}
