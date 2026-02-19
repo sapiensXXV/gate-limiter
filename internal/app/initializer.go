@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"gate-limiter/config/settings"
 	"gate-limiter/internal/limiter"
 	"gate-limiter/internal/limiter/strategy"
@@ -18,11 +19,14 @@ func InitRateLimitHandler(configPath string) (*limiter.RateLimitHandler, *settin
 
 	redisClient := NewRedisClient(&config.RedisConfig)
 	keyGenerator := NewKeyGenerator(config.RateLimiter)
+	if keyGenerator == nil {
+		return nil, nil, fmt.Errorf("failed to initialize key generator: unsupported identity key: %q", config.RateLimiter.Identity.Key)
+	}
 
 	responder := limiter.NewHttpLimitResponder(redisClient, keyGenerator, config.RateLimiter)
 	proxy := limiter.NewDefaultProxyHandler()
 
-	rl := initRateLimiter(&config.RateLimiter, keyGenerator, &redisClient, proxy)
+	rl := initRateLimiter(&config.RateLimiter, keyGenerator, &redisClient)
 
 	return limiter.NewRateLimitHandler(rl, proxy, responder, config.RateLimiter), config, nil
 }
@@ -34,7 +38,7 @@ func initConfig(configPath string) (*settings.RootRateLimiterConfig, error) {
 
 	rlc, err := settings.LoadRateLimitConfig(configPath)
 	if err != nil {
-		log.Printf("error occured while loading rate limiter config: %v", err)
+		log.Printf("error occur while loading rate limiter config: %v", err)
 		return nil, err
 	}
 	return rlc, nil
@@ -44,7 +48,6 @@ func initRateLimiter(
 	config *settings.RateLimiterConfig,
 	keyGenerator *util.IpKeyGenerator,
 	redisClient *types.RedisClient,
-	proxy *limiter.DefaultProxyHandler,
 ) types.RateLimiter {
 	var rl types.RateLimiter
 	log.Printf("selected strategy: [%s]\n", config.Strategy)
@@ -52,7 +55,7 @@ func initRateLimiter(
 	case "token_bucket":
 		rl = strategy.NewTokenBucketLimiter(keyGenerator, *redisClient, *config)
 	case "leaky_bucket":
-		leakyBucketManager := strategy.NewLeakyBucketManager(proxy, config.Apis)
+		leakyBucketManager := strategy.NewLeakyBucketManager(config.Apis)
 		rl = strategy.NewLeakyBucketLimiter(*config, leakyBucketManager)
 	case "fixed_window_counter":
 		rl = strategy.NewFixedWindowCounterLimiter(keyGenerator, *redisClient, *config)
