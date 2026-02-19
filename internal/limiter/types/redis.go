@@ -1,8 +1,9 @@
 package types
 
 import (
-	"github.com/redis/go-redis/v9"
 	"time"
+
+	"github.com/redis/go-redis/v9"
 )
 
 type RedisClient interface {
@@ -24,4 +25,6 @@ type RedisClient interface {
 
 	HGetObject(key string) (interface{}, error)
 	HSetObject(key string, value interface{}, expiration int) error
+
+	Eval(script string, keys []string, args ...interface{}) (interface{}, error)
 }
