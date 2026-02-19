@@ -11,6 +11,7 @@ import (
 	"log"
 
 	storeredis "gate-limiter/internal/limiter/store/redis"
+
 	goredis "github.com/redis/go-redis/v9"
 )
 
@@ -31,13 +32,18 @@ func InitRateLimitHandler(ctx context.Context, configPath string) (*limiter.Rate
 		return nil, nil, fmt.Errorf("failed to initialize key generator: unsupported identity key: %q", config.RateLimiter.Identity.Key)
 	}
 
+	identifier := newClientIdentifier(config.RateLimiter)
+	if identifier == nil {
+		return nil, nil, fmt.Errorf("failed to initialize client identifier: unsupported identity key: %q", config.RateLimiter.Identity.Key)
+	}
+
 	counterStore := storeredis.NewCounterStore(redisClient)
 	responder := limiter.NewHttpLimitResponder(config.RateLimiter)
 	proxy := limiter.NewDefaultProxyHandler()
 
 	rl := initRateLimiter(&config.RateLimiter, keyGenerator, redisClient, ctx)
 
-	return limiter.NewRateLimitHandler(rl, proxy, responder, config.RateLimiter, counterStore), config, nil
+	return limiter.NewRateLimitHandler(rl, proxy, responder, config.RateLimiter, counterStore, identifier), config, nil
 }
 
 func initConfig(configPath string) (*settings.RootRateLimiterConfig, error) {
@@ -84,9 +90,20 @@ func initRateLimiter(
 
 func NewKeyGenerator(config settings.RateLimiterConfig) *util.IpKeyGenerator {
 	identity := config.Identity
-	if identity.Key == "ipv4" {
+	if identity.Key == "ipv4" || identity.Key == "cookie" {
 		return util.NewIpKeyGenerator(config)
 	}
 	log.Printf("[ERROR] Wrong identity key value")
 	return nil
+}
+
+func newClientIdentifier(config settings.RateLimiterConfig) limiter.ClientIdentifier {
+	switch config.Identity.Key {
+	case "ipv4":
+		return &limiter.IpIdentifier{Header: config.Identity.Header}
+	case "cookie":
+		return limiter.NewCookieIdentifier()
+	default:
+		return nil
+	}
 }

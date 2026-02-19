@@ -95,10 +95,10 @@ docker run -d \
 
 ### ClientIdentity
 
-| Key      | Type     | Description                          |
-| -------- | -------- | ------------------------------------ |
-| `key`    | `string` | Identity key (e.g. `ipv4`, `header`) |
-| `header` | `string` | HTTP header name for identity value  |
+| Key      | Type     | Description                                          |
+| -------- | -------- | ---------------------------------------------------- |
+| `key`    | `string` | Identity key (`ipv4` or `cookie`)                    |
+| `header` | `string` | HTTP header name for identity value (ipv4 only)      |
 
 ---
 
@@ -211,10 +211,9 @@ Do not limit global traffic, but protect only sensitive APIs
 
 ```yml
 rateLimiter:
-  strategy: fixed_window_counter  
+  strategy: fixed_window_counter
   identity:
-    key: header
-    header: X-User-ID
+    key: cookie
 
   apis:
     - identifier: login_api
@@ -243,7 +242,7 @@ redis:
   db: 0
 ```
 
-* User is identified by `X-User-ID` header
+* User is identified by HMAC-signed cookie
 * Login API:
   * Max **5 attempts per minute**
 * Payment API:
@@ -302,8 +301,7 @@ Do not drop requests, but enforce a fixed processing rate
 rateLimiter:
   strategy: leaky_bucket
   identity:
-    key: header
-    header: X-Client-ID
+    key: cookie
 
   apis:
     - identifier: heavy_api

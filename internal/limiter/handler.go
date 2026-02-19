@@ -21,6 +21,7 @@ type RateLimitHandler struct {
 	Responder   LimitResponder
 	Config      settings.RateLimiterConfig
 	ClientStore store.CounterStore
+	Identifier  ClientIdentifier
 }
 
 var _ http.Handler = (*RateLimitHandler)(nil)
@@ -31,6 +32,7 @@ func NewRateLimitHandler(
 	responder LimitResponder,
 	config settings.RateLimiterConfig,
 	clientStore store.CounterStore,
+	identifier ClientIdentifier,
 ) *RateLimitHandler {
 	return &RateLimitHandler{
 		Limiter:     limiter,
@@ -38,6 +40,7 @@ func NewRateLimitHandler(
 		Responder:   responder,
 		Config:      config,
 		ClientStore: clientStore,
+		Identifier:  identifier,
 	}
 }
 
@@ -53,7 +56,7 @@ func (h *RateLimitHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	policy := h.Config.Strategy
-	clientID := r.Header.Get(h.Config.Identity.Header)
+	clientID := h.Identifier.Identify(w, r)
 
 	if exceeded, _, retryAfter := h.isClientLimitExceeded(clientID); exceeded {
 		h.Responder.RespondRateLimitExceeded(w, r, 0, retryAfter)

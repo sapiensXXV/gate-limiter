@@ -95,10 +95,10 @@ docker run -d \
 
 ### ClientIdentity
 
-| Key      | Type     | Description              |
-| -------- | -------- | ------------------------ |
-| `key`    | `string` | 식별 기준 (`ipv4`, `header`) |
-| `header` | `string` | 사용자 식별용 HTTP 헤더          |
+| Key      | Type     | Description                              |
+| -------- | -------- | ---------------------------------------- |
+| `key`    | `string` | 식별 기준 (`ipv4` 또는 `cookie`)               |
+| `header` | `string` | 사용자 식별용 HTTP 헤더 (ipv4일 때만 필요)           |
 
 ---
 
@@ -208,10 +208,9 @@ redis:
 
 ```yml
 rateLimiter:
-  strategy: fixed_window_counter  
+  strategy: fixed_window_counter
   identity:
-    key: header
-    header: X-User-ID
+    key: cookie
 
   apis:
     - identifier: login_api
@@ -242,6 +241,7 @@ redis:
 
 **의미:**
 
+* 쿠키 기반 클라이언트 식별
 * 전역 제한 없음
 * 로그인: 분당 5회 제한
 * 결제: 분당 3회 제한
@@ -297,8 +297,7 @@ redis:
 rateLimiter:
   strategy: leaky_bucket
   identity:
-    key: header
-    header: X-Client-ID
+    key: cookie
 
   apis:
     - identifier: heavy_api
