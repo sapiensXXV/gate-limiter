@@ -69,6 +69,8 @@ docker run -d \
   * `GATE_LIMITER_CONFIG` 환경변수는 컨테이너 내부 설정 파일 경로를 가리켜야 합니다.
   * `config.yml`의 `port`를 변경하면, `-p` 포트 매핑과 `EXPOSE` 값도 함께 맞춰야 합니다.
 
+* **Admin 페이지**: 서버 시작 후 `http://localhost:8082` (기본값)에 접속하면 현재 설정 상태를 확인할 수 있습니다. `config.yml`의 `adminPort` 옵션으로 포트를 변경할 수 있습니다.
+
 ---
 
 ## 설정 (Configuration)
@@ -92,6 +94,7 @@ docker run -d \
 | `apis`     | `[Api]`                           | API 단위 제한 규칙                                                                                                     |
 | `target`   | `string`                          | 허용 요청 전달 대상 도메인 URL                                                                                              |
 | `port`     | `int`                             | 서버 포트 (기본값: `8081`)                                                                                              |
+| `adminPort`| `int`                             | Admin 상태 페이지 포트 (기본값: `8082`)                                                                                    |
 
 ---
 
@@ -145,6 +148,28 @@ docker run -d \
 | `port`     | `int`    | Redis 포트     |
 | `password` | `string` | Redis 비밀번호   |
 | `db`       | `int`    | Redis DB 인덱스 |
+
+---
+
+## Admin 페이지
+
+Gate Limiter는 별도 포트에서 설정 상태를 한눈에 확인할 수 있는 Admin 페이지를 제공합니다.
+
+- **기본 URL**: `http://localhost:8082`
+- **포트 설정**: `config.yml`의 `rateLimiter.adminPort` (기본값: `8082`)
+
+<!-- TODO: 스크린샷 추가 -->
+
+Admin 페이지에서 확인할 수 있는 정보:
+
+| 항목 | 내용 |
+| --- | --- |
+| **상태 요약** | `target` 설정 여부 (미설정 시 경고 표시) |
+| **기본 설정** | Target URL, 서버 포트, Admin 포트, 전략(알고리즘) |
+| **클라이언트 식별** | 식별 기준 (`ipv4` / `cookie`), 헤더 이름 (ipv4일 때) |
+| **글로벌 클라이언트 제한** | `limit`, `windowSeconds` (미설정 시 "없음") |
+| **API별 제한 규칙** | identifier, method, path (expression + value), limit, windowSeconds, refillSeconds, expireSeconds, target |
+| **Redis 연결 정보** | host, port, DB index (비밀번호는 표시하지 않음) |
 
 ---
 

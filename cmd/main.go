@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"gate-limiter/internal/admin"
 	"gate-limiter/internal/app"
 	"gate-limiter/internal/metrics"
 	"log"
@@ -42,11 +43,30 @@ func main() {
 		Handler: metrics.WithMetrics(mux),
 	}
 
+	// admin server
+	adminHandler := admin.NewStatusHandler(config)
+	adminMux := http.NewServeMux()
+	adminMux.Handle("/", adminHandler)
+	adminServer := &http.Server{
+		Addr:    fmt.Sprintf(":%d", config.RateLimiter.AdminPort),
+		Handler: adminMux,
+	}
+
+	go func() {
+		log.Printf("Admin page: http://localhost:%d\n", config.RateLimiter.AdminPort)
+		if err := adminServer.ListenAndServe(); err != http.ErrServerClosed {
+			log.Printf("admin server error: %v", err)
+		}
+	}()
+
 	go func() {
 		<-ctx.Done()
 		log.Println("shutting down server...")
 		if err := server.Shutdown(context.Background()); err != nil {
 			log.Printf("server shutdown error: %v", err)
+		}
+		if err := adminServer.Shutdown(context.Background()); err != nil {
+			log.Printf("admin server shutdown error: %v", err)
 		}
 	}()
 

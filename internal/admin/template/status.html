@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gate Limiter - Admin</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; padding: 32px; }
+    .container { max-width: 960px; margin: 0 auto; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
+    .header-left h1 { font-size: 28px; margin-bottom: 4px; }
+    .header-left .subtitle { color: #888; font-size: 14px; }
+    .lang-toggle { display: flex; gap: 0; border: 1px solid #ddd; border-radius: 6px; overflow: hidden; }
+    .lang-toggle button { padding: 6px 14px; font-size: 13px; font-weight: 500; border: none; cursor: pointer; background: #fff; color: #666; transition: background 0.15s, color 0.15s; }
+    .lang-toggle button.active { background: #333; color: #fff; }
+    .lang-toggle button:not(:last-child) { border-right: 1px solid #ddd; }
+    .section { background: #fff; border-radius: 8px; box-shadow: 0 1px 6px rgba(0,0,0,0.06); padding: 24px; margin-bottom: 20px; }
+    .section h2 { font-size: 16px; color: #555; margin-bottom: 16px; border-bottom: 1px solid #eee; padding-bottom: 8px; }
+    .alert { background: #fff8e1; border-left: 4px solid #ffc107; padding: 12px 16px; border-radius: 4px; margin-bottom: 16px; font-size: 14px; }
+    .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 13px; font-weight: 600; }
+    .badge.ok { background: #e8f5e9; color: #2e7d32; }
+    .badge.warn { background: #fff3e0; color: #e65100; }
+    dl { display: grid; grid-template-columns: 160px 1fr; gap: 8px 16px; font-size: 14px; }
+    dt { color: #888; font-weight: 500; }
+    dd { color: #333; }
+    code { background: #f0f0f0; padding: 1px 6px; border-radius: 4px; font-size: 13px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #f0f0f0; }
+    th { background: #fafafa; color: #666; font-weight: 600; }
+    .footer { text-align: center; font-size: 12px; color: #bbb; margin-top: 24px; }
+    .footer a { color: #999; text-decoration: none; }
+    .footer a:hover { color: #666; text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="header-left">
+        <h1>Gate Limiter Admin</h1>
+        <p class="subtitle" data-i18n-ko="설정 상태 확인 페이지" data-i18n-en="Configuration Status Page">설정 상태 확인 페이지</p>
+      </div>
+      <div class="lang-toggle">
+        <button class="active" onclick="switchLang('ko')">한국어</button>
+        <button onclick="switchLang('en')">English</button>
+      </div>
+    </div>
+
+    {{if not .TargetConfigured}}
+    <div class="alert"
+         data-i18n-ko="target이 설정되지 않았습니다. config.yml에서 요청 전달 대상 도메인을 설정해 주세요."
+         data-i18n-en="target is not configured. Please set the target domain in config.yml.">
+      target이 설정되지 않았습니다. <code>config.yml</code>에서 요청 전달 대상 도메인을 설정해 주세요.
+    </div>
+    {{end}}
+
+    <div class="section">
+      <h2 data-i18n-ko="기본 설정" data-i18n-en="Basic Settings">기본 설정</h2>
+      <dl>
+        <dt>Target</dt>
+        <dd>
+          {{if .TargetConfigured}}
+            <span class="badge ok" data-i18n-ko="설정됨" data-i18n-en="Configured">설정됨</span> {{.Target}}
+          {{else}}
+            <span class="badge warn" data-i18n-ko="미설정" data-i18n-en="Not set">미설정</span>
+          {{end}}
+        </dd>
+        <dt>Port</dt>
+        <dd>{{.Port}}</dd>
+        <dt>Admin Port</dt>
+        <dd>{{.AdminPort}}</dd>
+        <dt>Strategy</dt>
+        <dd><code>{{.Strategy}}</code></dd>
+      </dl>
+    </div>
+
+    <div class="section">
+      <h2 data-i18n-ko="클라이언트 식별" data-i18n-en="Client Identity">클라이언트 식별</h2>
+      <dl>
+        <dt>Identity Key</dt>
+        <dd>
+          <code>{{.IdentityKey}}</code>
+          {{if .IdentityHeader}} (header: <code>{{.IdentityHeader}}</code>){{end}}
+        </dd>
+      </dl>
+    </div>
+
+    <div class="section">
+      <h2 data-i18n-ko="글로벌 클라이언트 제한" data-i18n-en="Global Client Limit">글로벌 클라이언트 제한</h2>
+      <dl>
+        <dt>Limit</dt>
+        <dd>
+          {{if .HasClientLimit}}
+            {{.ClientLimit}} requests / {{.ClientWindow}} sec
+          {{else}}
+            <span data-i18n-ko="없음" data-i18n-en="None">없음</span>
+          {{end}}
+        </dd>
+      </dl>
+    </div>
+
+    <div class="section">
+      <h2 data-i18n-ko="API별 제한 규칙" data-i18n-en="Per-API Rate Limit Rules">API별 제한 규칙</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Identifier</th>
+            <th>Method</th>
+            <th>Path</th>
+            <th>Limit</th>
+            <th>Window(s)</th>
+            <th>Refill(s)</th>
+            <th>Expire(s)</th>
+            <th>Target</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{if .Apis}}
+            {{range .Apis}}
+            <tr>
+              <td>{{.Identifier}}</td>
+              <td><code>{{.Method}}</code></td>
+              <td><code>{{.PathExpression}}</code> : <code>{{.PathValue}}</code></td>
+              <td>{{.Limit}}</td>
+              <td>{{.WindowSeconds}}</td>
+              <td>{{.RefillSeconds}}</td>
+              <td>{{.ExpireSeconds}}</td>
+              <td>{{.Target}}</td>
+            </tr>
+            {{end}}
+          {{else}}
+            <tr>
+              <td colspan="8" style="text-align:center;color:#999;"
+                  data-i18n-ko="등록된 API 규칙이 없습니다"
+                  data-i18n-en="No API rules registered">등록된 API 규칙이 없습니다</td>
+            </tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="section">
+      <h2 data-i18n-ko="Redis 연결 정보" data-i18n-en="Redis Connection">Redis 연결 정보</h2>
+      <dl>
+        <dt>Host</dt>
+        <dd><code>{{.RedisHost}}</code></dd>
+        <dt>Port</dt>
+        <dd>{{.RedisPort}}</dd>
+        <dt>DB</dt>
+        <dd>{{.RedisDB}}</dd>
+      </dl>
+    </div>
+
+    <p class="footer">Gate Limiter Admin - http://localhost:{{.AdminPort}} · <a href="https://github.com/sapiensXXV/gate-limiter" target="_blank" rel="noopener noreferrer">GitHub</a></p>
+  </div>
+
+  <script>
+    function switchLang(lang) {
+      document.querySelectorAll('[data-i18n-' + lang + ']').forEach(function(el) {
+        el.textContent = el.getAttribute('data-i18n-' + lang);
+      });
+      document.documentElement.lang = lang;
+      document.querySelectorAll('.lang-toggle button').forEach(function(btn) {
+        btn.classList.toggle('active', btn.textContent === (lang === 'ko' ? '한국어' : 'English'));
+      });
+    }
+  </script>
+</body>
+</html>

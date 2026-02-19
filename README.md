@@ -69,6 +69,8 @@ docker run -d \
   * The `GATE_LIMITER_CONFIG` environment variable must point to the config path inside the container.
   * If you change `port` in `config.yml`, you must also match the `-p` port mapping and the `EXPOSE` value accordingly.
 
+* **Admin page**: After starting the server, visit `http://localhost:8082` (default) to view the current configuration status. The admin port can be changed via the `adminPort` option in `config.yml`.
+
 ---
 
 ## Configuration
@@ -92,6 +94,7 @@ docker run -d \
 | `apis`     | `[Api]`                           | Per-API rate limit rules                                                                                           |
 | `target`   | `string`                          | Target domain URL for allowed requests                                                                             |
 | `port`     | `int`                             | Server port (default: `8081`)                                                                                      |
+| `adminPort`| `int`                             | Admin status page port (default: `8082`)                                                                           |
 
 ---
 
@@ -145,6 +148,28 @@ docker run -d \
 | `port`     | `int`    | Redis port     |
 | `password` | `string` | Redis password |
 | `db`       | `int`    | Redis DB index |
+
+---
+
+## Admin Page
+
+Gate Limiter provides a built-in admin status page on a separate port so you can verify your configuration at a glance.
+
+- **Default URL**: `http://localhost:8082`
+- **Port setting**: `rateLimiter.adminPort` in `config.yml` (default: `8082`)
+
+<!-- TODO: add screenshot -->
+
+The admin page displays the following information:
+
+| Section | Details |
+| --- | --- |
+| **Status** | Whether `target` is configured (with warning if missing) |
+| **Basic Settings** | Target URL, server port, admin port, strategy (algorithm) |
+| **Client Identity** | Identity key (`ipv4` / `cookie`), header name (ipv4 only) |
+| **Global Client Limit** | `limit` and `windowSeconds` (or "none" if not set) |
+| **Per-API Rules** | Identifier, method, path (expression + value), limit, windowSeconds, refillSeconds, expireSeconds, target |
+| **Redis Connection** | Host, port, DB index (password is not displayed) |
 
 ---
 

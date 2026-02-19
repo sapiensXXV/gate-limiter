@@ -22,12 +22,13 @@ type RedisClientConfig struct {
 }
 
 type RateLimiterConfig struct {
-	Strategy string         `yaml:"strategy"`
-	Identity ClientIdentity `yaml:"identity"`
-	Client   ClientLimit    `yaml:"client"`
-	Apis     []Api          `yaml:"apis"`
-	Target   string         `yaml:"target"`
-	Port     int            `yaml:"port"`
+	Strategy  string         `yaml:"strategy"`
+	Identity  ClientIdentity `yaml:"identity"`
+	Client    ClientLimit    `yaml:"client"`
+	Apis      []Api          `yaml:"apis"`
+	Target    string         `yaml:"target"`
+	Port      int            `yaml:"port"`
+	AdminPort int            `yaml:"adminPort"`
 }
 
 type ClientIdentity struct {
@@ -116,6 +117,9 @@ func validateConfig(config *RootRateLimiterConfig) {
 func portConfig(config *RootRateLimiterConfig) {
 	if config.RateLimiter.Port == 0 {
 		config.RateLimiter.Port = 8081 // 포트 기본값 8081
+	}
+	if config.RateLimiter.AdminPort == 0 {
+		config.RateLimiter.AdminPort = 8082 // admin 포트 기본값 8082
 	}
 }
 
