@@ -1,5 +1,6 @@
 tmp/**
 개선점.md
+개선점_redis.md
 .diff
 .DS_Store
 merged_src_file.txt
