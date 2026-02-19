@@ -1,18 +1,18 @@
 package strategy
 
 import (
+	"context"
 	"gate-limiter/config/settings"
+	"gate-limiter/internal/limiter/store"
 	"gate-limiter/internal/limiter/types"
 	"gate-limiter/internal/limiter/util"
 	"log"
-	"math"
-	"strconv"
 	"time"
 )
 
 type SlidingWindowCounterLimiter struct {
 	KeyGenerator util.KeyGenerator
-	RedisClient  types.RedisClient
+	Store        store.SlidingWindowCounterStore
 	Config       settings.RateLimiterConfig
 }
 
@@ -20,12 +20,12 @@ var _ types.RateLimiter = (*SlidingWindowCounterLimiter)(nil)
 
 func NewSlidingWindowCounterLimiter(
 	keyGenerator util.KeyGenerator,
-	redisClient types.RedisClient,
+	slidingWindowCounterStore store.SlidingWindowCounterStore,
 	config settings.RateLimiterConfig,
 ) types.RateLimiter {
 	return &SlidingWindowCounterLimiter{
 		KeyGenerator: keyGenerator,
-		RedisClient:  redisClient,
+		Store:        slidingWindowCounterStore,
 		Config:       config,
 	}
 }
@@ -36,7 +36,6 @@ func (l *SlidingWindowCounterLimiter) IsTarget(requestMethod, requestPath string
 		expressionType := api.Path.Expression
 		pathValue := api.Path.Value
 		var result bool
-		// 경로 표현 방식에 따라 경로 매칭 방식 결정
 		if expressionType == regex {
 			result = util.MatchRegex(requestPath, pathValue)
 		} else if expressionType == plain {
@@ -60,54 +59,18 @@ func (l *SlidingWindowCounterLimiter) IsAllowed(
 	api *types.ApiMatchResult,
 	_ *types.QueuedRequest,
 ) types.RateLimitDecision {
-	now := time.Now()                               // 현재 시간
-	cutoff := now.Unix() - int64(api.WindowSeconds) // 고려 대상 전의 시간
+	now := time.Now()
 	key := l.KeyGenerator.Make(ip, api.Identifier)
 
-	// 시간이 지난 데이터 삭제
-	if err := l.RedisClient.RemoveOldEntries(key, now.Add(-time.Duration(api.WindowSeconds)*time.Second)); err != nil {
-		log.Printf("fail to remove old entry on key=[%s] %v\n", key, err)
-	}
-
-	if err := l.RedisClient.ZRemRangeByScore(key, "0", strconv.FormatInt(cutoff, 10)); err != nil {
-		log.Printf("fail to remove range by score, [key]:%s, from:[%s], to:[%d], err:%v", key, "0", cutoff, err)
-		return types.RateLimitDecision{Allowed: false}
-	}
-
-	// 2) 새 요청 로그 추가
-	if err := l.RedisClient.AddToSortedSet(key, now.String(), now); err != nil {
-		log.Printf("fail to add to sorted set on key=[%s] %v\n", key, err)
-		return types.RateLimitDecision{Allowed: false}
-	}
-
-	window := time.Duration(api.WindowSeconds) * time.Second
-	currentWindowStart := now.Truncate(window)
-	// currentWindowStart 시간으로부터 몇초가 지났는지를 봐야한다.
-	gapFromCurrentStart := int(now.Sub(currentWindowStart).Seconds()) // 현재 시간으로부터 지난 초 수
-	// 전체 카운트와, currentWindowStart 이후로 온 요청의 갯수를 센다면 비율을 파악할 수 있다.
-
-	size := l.RedisClient.ZSetSize(key)
-	searchMin := strconv.FormatInt(currentWindowStart.Unix(), 10)
-	currentWindowSize, err := l.RedisClient.ZCount(key, searchMin, "+inf")
+	result, err := l.Store.Allow(context.TODO(), key, api.Limit, api.WindowSeconds, now.Unix(), now.String())
 	if err != nil {
-		log.Printf("fail to get current window size, [%s]\n", err)
+		log.Printf("sliding window counter store error: key=[%s], err=%v", key, err)
 		return types.RateLimitDecision{Allowed: false}
 	}
 
-	result := float64(currentWindowSize) + float64(size-currentWindowSize)*(float64(api.WindowSeconds-gapFromCurrentStart)/float64(api.WindowSeconds))
-	if int(math.Floor(result)) > api.Limit {
-		retryAt := currentWindowStart.Add(window)
-		wait := retryAt.Sub(now)
-		sec := int(math.Ceil(wait.Seconds()))
-		if sec < 0 {
-			sec = 0
-		}
-
-		return types.RateLimitDecision{
-			Allowed:       false,
-			RetryAfterSec: sec,
-		}
+	return types.RateLimitDecision{
+		Allowed:       result.Allowed,
+		Remaining:     result.Remaining,
+		RetryAfterSec: result.RetryAfterSec,
 	}
-
-	return types.RateLimitDecision{Allowed: true}
 }

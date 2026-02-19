@@ -2,15 +2,14 @@ package limiter
 
 import (
 	"gate-limiter/config/settings"
+	storeredis "gate-limiter/internal/limiter/store/redis"
 	"gate-limiter/internal/limiter/types"
-	"gate-limiter/pkg/redisclient"
-	"net"
 	"net/http"
 	"net/http/httptest"
-	"strconv"
 	"testing"
 
 	"github.com/alicebob/miniredis/v2"
+	goredis "github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -18,10 +17,9 @@ func TestServeHTTP_NilLimiter(t *testing.T) {
 	handler := &RateLimitHandler{}
 
 	w := httptest.NewRecorder()
-	r := httptest.NewRequest("GET", "/", nil)
+	r := httptest.NewRequest(http.MethodGet, "/", nil)
 	handler.ServeHTTP(w, r)
 
-	// Limiter가 nil이면 아무 응답도 쓰지 않고 리턴
 	assert.Equal(t, http.StatusOK, w.Code)
 }
 
@@ -102,12 +100,8 @@ func TestServeHTTP_MatchingRequest_Denied(t *testing.T) {
 
 func TestServeHTTP_ClientLimitExceeded(t *testing.T) {
 	mr := miniredis.RunT(t)
-	host, portStr, _ := net.SplitHostPort(mr.Addr())
-	port, _ := strconv.Atoi(portStr)
-	rc := redisclient.NewDefaultRedisClient(&settings.RedisClientConfig{
-		Host: host,
-		Port: port,
-	})
+	rc := goredis.NewClient(&goredis.Options{Addr: mr.Addr()})
+	counterStore := storeredis.NewCounterStore(rc)
 
 	proxy := &MockProxy{}
 	responder := &MockResponder{}
@@ -123,7 +117,7 @@ func TestServeHTTP_ClientLimitExceeded(t *testing.T) {
 			Target:   "http://example.com",
 			Client:   settings.ClientLimit{Limit: 2, WindowSeconds: 60},
 		},
-		rc,
+		counterStore,
 	)
 
 	r := httptest.NewRequest("POST", "/api/test", nil)

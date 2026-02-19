@@ -34,6 +34,21 @@ func main() {
 	mux.Handle("/", limitHandler)
 
 	portString := fmt.Sprintf(":%d", config.RateLimiter.Port)
-	err = http.ListenAndServe(portString, metrics.WithMetrics(mux))
-	log.Fatal(err)
+	server := &http.Server{
+		Addr:    portString,
+		Handler: metrics.WithMetrics(mux),
+	}
+
+	go func() {
+		<-ctx.Done()
+		log.Println("shutting down server...")
+		if err := server.Shutdown(context.Background()); err != nil {
+			log.Printf("server shutdown error: %v", err)
+		}
+	}()
+
+	if err := server.ListenAndServe(); err != http.ErrServerClosed {
+		log.Fatal(err)
+	}
+	log.Println("server stopped")
 }

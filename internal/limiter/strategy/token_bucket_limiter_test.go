@@ -2,6 +2,7 @@ package strategy
 
 import (
 	"gate-limiter/config/settings"
+	storeredis "gate-limiter/internal/limiter/store/redis"
 	"gate-limiter/internal/limiter/types"
 	"gate-limiter/internal/limiter/util"
 	"strconv"
@@ -29,7 +30,8 @@ func TestTokenBucketLimiter_IsTarget(t *testing.T) {
 
 	keyGen := util.NewIpKeyGenerator(settings.RateLimiterConfig{Strategy: "token_bucket"})
 	_, rc := newTestRedisClient(t)
-	limiter := NewTokenBucketLimiter(keyGen, rc, cfg)
+	s := storeredis.NewTokenBucketStore(rc)
+	limiter := NewTokenBucketLimiter(keyGen, s, cfg)
 
 	t.Run("matching path and method", func(t *testing.T) {
 		result := limiter.IsTarget("GET", "/api/public/data")
@@ -53,7 +55,8 @@ func TestTokenBucketLimiter_IsAllowed(t *testing.T) {
 
 	t.Run("allowed until tokens exhausted", func(t *testing.T) {
 		_, rc := newTestRedisClient(t)
-		limiter := NewTokenBucketLimiter(keyGen, rc, settings.RateLimiterConfig{})
+		s := storeredis.NewTokenBucketStore(rc)
+		limiter := NewTokenBucketLimiter(keyGen, s, settings.RateLimiterConfig{})
 
 		api := &types.ApiMatchResult{
 			IsMatch:       true,
@@ -63,14 +66,12 @@ func TestTokenBucketLimiter_IsAllowed(t *testing.T) {
 			ExpireSeconds: 600,
 		}
 
-		// 토큰 3개 소비: 모두 허용
 		for i := 0; i < 3; i++ {
 			d := limiter.IsAllowed("127.0.0.1", api, nil)
 			assert.True(t, d.Allowed, "요청 %d는 허용되어야 한다", i+1)
 			assert.Equal(t, 3-i-1, d.Remaining)
 		}
 
-		// 4번째 요청: 토큰 소진 → 거부
 		d := limiter.IsAllowed("127.0.0.1", api, nil)
 		assert.False(t, d.Allowed)
 		assert.Equal(t, 0, d.Remaining)
@@ -78,7 +79,8 @@ func TestTokenBucketLimiter_IsAllowed(t *testing.T) {
 
 	t.Run("different IPs have separate buckets", func(t *testing.T) {
 		_, rc := newTestRedisClient(t)
-		limiter := NewTokenBucketLimiter(keyGen, rc, settings.RateLimiterConfig{})
+		s := storeredis.NewTokenBucketStore(rc)
+		limiter := NewTokenBucketLimiter(keyGen, s, settings.RateLimiterConfig{})
 
 		api := &types.ApiMatchResult{
 			IsMatch:       true,
@@ -97,7 +99,8 @@ func TestTokenBucketLimiter_IsAllowed(t *testing.T) {
 
 	t.Run("tokens refill after refill interval", func(t *testing.T) {
 		mr, rc := newTestRedisClient(t)
-		limiter := NewTokenBucketLimiter(keyGen, rc, settings.RateLimiterConfig{})
+		s := storeredis.NewTokenBucketStore(rc)
+		limiter := NewTokenBucketLimiter(keyGen, s, settings.RateLimiterConfig{})
 
 		api := &types.ApiMatchResult{
 			IsMatch:       true,
@@ -107,14 +110,12 @@ func TestTokenBucketLimiter_IsAllowed(t *testing.T) {
 			ExpireSeconds: 600,
 		}
 
-		// 토큰 2개 소진
 		limiter.IsAllowed("127.0.0.1", api, nil)
 		limiter.IsAllowed("127.0.0.1", api, nil)
 
 		d := limiter.IsAllowed("127.0.0.1", api, nil)
 		assert.False(t, d.Allowed, "토큰 소진 후 거부되어야 한다")
 
-		// Redis의 last_refill을 과거로 조작하여 리필 트리거
 		key := keyGen.Make("127.0.0.1", "refill_test")
 		pastTime := time.Now().Unix() - 10
 		mr.HSet(key, "last_refill", strconv.FormatInt(pastTime, 10))
@@ -126,7 +127,8 @@ func TestTokenBucketLimiter_IsAllowed(t *testing.T) {
 
 	t.Run("retry_after is positive when denied", func(t *testing.T) {
 		_, rc := newTestRedisClient(t)
-		limiter := NewTokenBucketLimiter(keyGen, rc, settings.RateLimiterConfig{})
+		s := storeredis.NewTokenBucketStore(rc)
+		limiter := NewTokenBucketLimiter(keyGen, s, settings.RateLimiterConfig{})
 
 		api := &types.ApiMatchResult{
 			IsMatch:       true,
@@ -136,7 +138,7 @@ func TestTokenBucketLimiter_IsAllowed(t *testing.T) {
 			ExpireSeconds: 600,
 		}
 
-		limiter.IsAllowed("127.0.0.1", api, nil) // 토큰 소진
+		limiter.IsAllowed("127.0.0.1", api, nil)
 
 		d := limiter.IsAllowed("127.0.0.1", api, nil)
 		assert.False(t, d.Allowed)

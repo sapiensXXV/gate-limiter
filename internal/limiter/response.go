@@ -3,8 +3,6 @@ package limiter
 import (
 	"encoding/json"
 	config_ratelimiter "gate-limiter/config/settings"
-	"gate-limiter/internal/limiter/types"
-	"gate-limiter/internal/limiter/util"
 	"net/http"
 	"strconv"
 	"time"
@@ -21,21 +19,11 @@ type LimitResponder interface {
 }
 
 type HttpLimitResponder struct {
-	RedisClient  types.RedisClient
-	KeyGenerator util.KeyGenerator
-	Config       config_ratelimiter.RateLimiterConfig
+	Config config_ratelimiter.RateLimiterConfig
 }
 
-func NewHttpLimitResponder(
-	redisClient types.RedisClient,
-	keyGenerator util.KeyGenerator,
-	config config_ratelimiter.RateLimiterConfig,
-) *HttpLimitResponder {
-	h := &HttpLimitResponder{}
-	h.RedisClient = redisClient
-	h.KeyGenerator = keyGenerator
-	h.Config = config
-	return h
+func NewHttpLimitResponder(config config_ratelimiter.RateLimiterConfig) *HttpLimitResponder {
+	return &HttpLimitResponder{Config: config}
 }
 
 func (h *HttpLimitResponder) RespondRateLimitExceeded(
@@ -44,16 +32,14 @@ func (h *HttpLimitResponder) RespondRateLimitExceeded(
 	remaining int,
 	retryAfter int,
 ) {
-
 	resetAt := time.Now().Add(time.Duration(retryAfter) * time.Second).Unix()
 
 	w.Header().Set(XRateLimitRemaining, strconv.Itoa(remaining))
 	w.Header().Set(XRateLimitReset, strconv.FormatInt(resetAt, 10))
 	w.Header().Set(XRateLimitRetryAfter, strconv.Itoa(retryAfter))
 
-	// JSON 응답임을 명시
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(http.StatusTooManyRequests) // HTTP 429 (too many requests)
+	w.WriteHeader(http.StatusTooManyRequests)
 
 	responseBody := map[string]interface{}{
 		"error":       "Too Many Requests",

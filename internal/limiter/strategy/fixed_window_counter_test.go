@@ -2,6 +2,7 @@ package strategy
 
 import (
 	"gate-limiter/config/settings"
+	storeredis "gate-limiter/internal/limiter/store/redis"
 	"gate-limiter/internal/limiter/types"
 	"gate-limiter/internal/limiter/util"
 	"testing"
@@ -37,7 +38,8 @@ func TestFixedWindowCounterLimiter_IsTarget(t *testing.T) {
 
 	keyGen := util.NewIpKeyGenerator(settings.RateLimiterConfig{Strategy: "fixed_window_counter"})
 	_, rc := newTestRedisClient(t)
-	limiter := NewFixedWindowCounterLimiter(keyGen, rc, cfg)
+	s := storeredis.NewCounterStore(rc)
+	limiter := NewFixedWindowCounterLimiter(keyGen, s, cfg)
 
 	tests := []struct {
 		name          string
@@ -101,7 +103,8 @@ func TestFixedWindowCounterLimiter_IsAllowed(t *testing.T) {
 
 	t.Run("allowed until limit then blocked", func(t *testing.T) {
 		_, rc := newTestRedisClient(t)
-		limiter := NewFixedWindowCounterLimiter(keyGen, rc, settings.RateLimiterConfig{})
+		s := storeredis.NewCounterStore(rc)
+		limiter := NewFixedWindowCounterLimiter(keyGen, s, settings.RateLimiterConfig{})
 
 		api := &types.ApiMatchResult{
 			IsMatch:       true,
@@ -111,17 +114,14 @@ func TestFixedWindowCounterLimiter_IsAllowed(t *testing.T) {
 			ExpireSeconds: 3600,
 		}
 
-		// 첫 번째 요청: 허용, remaining = 1
 		d1 := limiter.IsAllowed("127.0.0.1", api, nil)
 		assert.True(t, d1.Allowed)
 		assert.Equal(t, 1, d1.Remaining)
 
-		// 두 번째 요청: 허용, remaining = 0
 		d2 := limiter.IsAllowed("127.0.0.1", api, nil)
 		assert.True(t, d2.Allowed)
 		assert.Equal(t, 0, d2.Remaining)
 
-		// 세 번째 요청: 제한 초과 → 거부
 		d3 := limiter.IsAllowed("127.0.0.1", api, nil)
 		assert.False(t, d3.Allowed)
 		assert.Equal(t, 0, d3.Remaining)
@@ -130,7 +130,8 @@ func TestFixedWindowCounterLimiter_IsAllowed(t *testing.T) {
 
 	t.Run("different IPs have separate counters", func(t *testing.T) {
 		_, rc := newTestRedisClient(t)
-		limiter := NewFixedWindowCounterLimiter(keyGen, rc, settings.RateLimiterConfig{})
+		s := storeredis.NewCounterStore(rc)
+		limiter := NewFixedWindowCounterLimiter(keyGen, s, settings.RateLimiterConfig{})
 
 		api := &types.ApiMatchResult{
 			IsMatch:       true,

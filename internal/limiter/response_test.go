@@ -12,7 +12,7 @@ import (
 )
 
 func TestHttpLimitResponder_RespondRateLimitExceeded(t *testing.T) {
-	responder := NewHttpLimitResponder(nil, nil, settings.RateLimiterConfig{})
+	responder := NewHttpLimitResponder(settings.RateLimiterConfig{})
 
 	writer := httptest.NewRecorder()
 	request := httptest.NewRequest("GET", "/test", nil)
@@ -41,7 +41,7 @@ func TestHttpLimitResponder_RespondRateLimitExceeded(t *testing.T) {
 }
 
 func TestHttpLimitResponder_RemainingHeader(t *testing.T) {
-	responder := NewHttpLimitResponder(nil, nil, settings.RateLimiterConfig{})
+	responder := NewHttpLimitResponder(settings.RateLimiterConfig{})
 
 	writer := httptest.NewRecorder()
 	request := httptest.NewRequest("GET", "/test", nil)
