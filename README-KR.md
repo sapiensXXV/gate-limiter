@@ -185,6 +185,7 @@ rateLimiter:
       expireSeconds: 3600  
 
   target: https://mywebsitedomain.com
+  port: 8081  # 기본값
 
 redis:
   host: localhost

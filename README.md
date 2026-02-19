@@ -187,6 +187,7 @@ rateLimiter:
 
   # Forward allowed requests to backend service
   target: https://mywebsitedomain.com
+  port: 8081  # default
 
 redis:
   host: localhost
