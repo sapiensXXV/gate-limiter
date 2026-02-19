@@ -1,6 +1,7 @@
 package limiter
 
 import (
+	"encoding/json"
 	config_ratelimiter "gate-limiter/config/settings"
 	"gate-limiter/internal/limiter/types"
 	"gate-limiter/internal/limiter/util"
@@ -49,5 +50,16 @@ func (h *HttpLimitResponder) RespondRateLimitExceeded(
 	w.Header().Set(XRateLimitRemaining, strconv.Itoa(remaining))
 	w.Header().Set(XRateLimitReset, strconv.FormatInt(resetAt, 10))
 	w.Header().Set(XRateLimitRetryAfter, strconv.Itoa(retryAfter))
+
+	// JSON 응답임을 명시
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(http.StatusTooManyRequests) // HTTP 429 (too many requests)
+
+	responseBody := map[string]interface{}{
+		"error":       "Too Many Requests",
+		"message":     "요청 한도를 초과했습니다. 잠시 후 다시 시도해주세요",
+		"retry_after": retryAfter,
+	}
+
+	json.NewEncoder(w).Encode(responseBody)
 }
