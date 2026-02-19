@@ -24,24 +24,27 @@ func NewLeakyBucketLimiter(
 	return h
 }
 
-func (l *LeakyBucketLimiter) IsTarget(method, url string) *types.ApiMatchResult {
+func (l *LeakyBucketLimiter) IsTarget(method, requestPath string) *types.ApiMatchResult {
 	for _, api := range l.Config.Apis {
 		pathExpression := api.Path.Expression
 		requestPath := api.Path.Value
 		var isPathMatch bool
 		if pathExpression == regex {
-			isPathMatch = util.MatchRegex(url, requestPath)
+			isPathMatch = util.MatchRegex(requestPath, requestPath)
 		} else if pathExpression == plain {
-			isPathMatch = util.MatchPlain(url, requestPath)
+			isPathMatch = util.MatchPlain(requestPath, requestPath)
 		} else {
 			log.Println("cannot identify path expression")
 		}
 		if isPathMatch && method == api.Method {
 			return &types.ApiMatchResult{
-				IsMatch:    true,
-				Identifier: api.Identifier,
-				Limit:      api.Limit,
-				Target:     api.Target,
+				IsMatch:       true,
+				Identifier:    api.Identifier,
+				Limit:         api.Limit,
+				WindowSeconds: api.WindowSeconds,
+				ExpireSeconds: api.ExpireSeconds,
+				RefillSeconds: api.RefillSeconds,
+				Target:        api.Target,
 			}
 		}
 	}
@@ -53,17 +56,50 @@ func (l *LeakyBucketLimiter) IsAllowed(
 	api *types.ApiMatchResult,
 	queuedRequest *types.QueuedRequest,
 ) types.RateLimitDecision {
-	result := l.Manager.Enqueue(api.Identifier, ip, *queuedRequest, *api)
-	// 큐에 여유공간이 있는지 확인하는 작업이 여기서는 채널에 데이터를 넣을 수 있는지 여부에 따라 결정된다.
-	// 그 결과가 result 로 반환된다.
+	//result := l.Manager.Enqueue(api.Identifier, ip, *queuedRequest, *api)
+	item, enqueued := l.Manager.Enqueue(api.Identifier, ip, *api)
+
 	freeSpace, err := l.Manager.CountBucketFreeCapacity(api.Identifier, ip)
+	if err != nil {
+		log.Println("Cannot check free space of channel", err)
+		freeSpace = 0
+	}
+
 	retryAfterSec, err := l.Manager.CalcRetryTimeAfter(api.Identifier, ip, *api)
 	if err != nil {
 		log.Println("Cannot check free space of channel", err)
+		retryAfterSec = 0
 	}
+
+	if !enqueued {
+		return types.RateLimitDecision{
+			Allowed:       false,
+			Remaining:     freeSpace,
+			RetryAfterSec: retryAfterSec,
+		}
+	}
+
+	//큐에 들어간 요청은 스케줄러가 permit(item.Done close)를 줄 때까지 대기한다.
+
+	if queuedRequest != nil && queuedRequest.Request != nil {
+		select {
+		case <-item.Done:
+			// ok
+		case <-queuedRequest.Request.Context().Done():
+			// 요청이 취소되면 더 이상 대기하지 않는다. (큐 항목은 스케줄러에서 자연스럽게 제거된다)
+			return types.RateLimitDecision{
+				Allowed:       false,
+				Remaining:     freeSpace,
+				RetryAfterSec: 0,
+			}
+		}
+	} else {
+		<-item.Done
+	}
+
 	return types.RateLimitDecision{
-		Allowed:       result,
+		Allowed:       true,
 		Remaining:     freeSpace,
-		RetryAfterSec: retryAfterSec, // 마지막 Ticker 타임을 기록
+		RetryAfterSec: 0,
 	}
 }
