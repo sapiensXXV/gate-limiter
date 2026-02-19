@@ -10,9 +10,11 @@ import (
 	"log"
 )
 
-func InitRateLimitHandler() (*limiter.RateLimitHandler, *settings.RootRateLimiterConfig, error) {
-	var config *settings.RootRateLimiterConfig
-	config = initConfig()
+func InitRateLimitHandler(configPath string) (*limiter.RateLimitHandler, *settings.RootRateLimiterConfig, error) {
+	config, err := initConfig(configPath)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	redisClient := NewRedisClient(&config.RedisConfig)
 	keyGenerator := NewKeyGenerator(config.RateLimiter)
@@ -25,12 +27,17 @@ func InitRateLimitHandler() (*limiter.RateLimitHandler, *settings.RootRateLimite
 	return limiter.NewRateLimitHandler(rl, proxy, responder, config.RateLimiter), config, nil
 }
 
-func initConfig() *settings.RootRateLimiterConfig {
-	rlc, err := settings.LoadRateLimitConfig("config.yml") // Load config.yml
-	if err != nil {
-		log.Printf("error occur while loading config.yml: %v\n", err)
+func initConfig(configPath string) (*settings.RootRateLimiterConfig, error) {
+	if configPath == "" {
+		configPath = "config.yml"
 	}
-	return rlc
+
+	rlc, err := settings.LoadRateLimitConfig(configPath)
+	if err != nil {
+		log.Printf("error occured while loading rate limiter config: %v", err)
+		return nil, err
+	}
+	return rlc, nil
 }
 
 func initRateLimiter(

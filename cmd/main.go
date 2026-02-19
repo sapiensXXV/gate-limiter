@@ -18,7 +18,7 @@ func main() {
 	}
 
 	// handler
-	limitHandler, config, err := app.InitRateLimitHandler() // 초기화가 이루어지는 시점
+	limitHandler, config, err := app.InitRateLimitHandler(configPath) // 초기화가 이루어지는 시점
 	if err != nil {
 		log.Fatal("Error initializing rate limiter handler", err)
 	}
