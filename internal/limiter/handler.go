@@ -42,6 +42,11 @@ func NewRateLimitHandler(
 }
 
 func (h *RateLimitHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if h.Config.Target == "" {
+		h.respondDefaultPage(w)
+		return
+	}
+
 	if h.Limiter == nil {
 		log.Println("RateLimitHandler.Limiter is nil!")
 		return
@@ -107,4 +112,48 @@ func (h *RateLimitHandler) isClientLimitExceeded(clientID string) (exceeded bool
 	}
 
 	return false, h.Config.Client.Limit - int(result.Count), 0
+}
+
+func (h *RateLimitHandler) respondDefaultPage(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintf(w, `<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gate Limiter</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+    .container { background: #fff; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); padding: 48px; max-width: 560px; width: 90%%; }
+    h1 { font-size: 28px; margin-bottom: 8px; }
+    .subtitle { color: #888; margin-bottom: 32px; }
+    .status { background: #fff8e1; border-left: 4px solid #ffc107; padding: 16px; border-radius: 4px; margin-bottom: 24px; }
+    .status strong { color: #f57f17; }
+    p { line-height: 1.7; margin-bottom: 12px; }
+    code { background: #f0f0f0; padding: 2px 6px; border-radius: 4px; font-size: 14px; }
+    pre { background: #1e1e1e; color: #d4d4d4; padding: 16px; border-radius: 8px; overflow-x: auto; font-size: 13px; line-height: 1.6; margin: 16px 0; }
+    pre .key { color: #9cdcfe; }
+    pre .value { color: #ce9178; }
+    pre .comment { color: #6a9955; }
+    .info { font-size: 13px; color: #aaa; margin-top: 24px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Gate Limiter</h1>
+    <p class="subtitle">API Rate Limiting Gateway</p>
+    <div class="status">
+      <strong>target</strong>이 설정되지 않았습니다.
+    </div>
+    <p><code>config.yml</code> 파일에서 요청을 전달할 대상 도메인을 설정해 주세요.</p>
+    <pre><span class="key">rateLimiter</span>:
+  <span class="comment"># ... 다른 설정 ...</span>
+  <span class="key">target</span>: <span class="value">"https://your-domain.com"</span></pre>
+    <p>설정을 변경한 후 서버를 재시작하면 해당 도메인으로 요청이 전달됩니다.</p>
+    <p class="info">port: %d</p>
+  </div>
+</body>
+</html>`, h.Config.Port)
 }

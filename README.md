@@ -2,7 +2,7 @@
 
 English | [한국어](./README-KR.md)
 
-[![Golang](https://img.shields.io/badge/Go-1.24.5-00ADD8?style=flat&logo=Go)](https://go.dev/doc/)
+[![Golang](https://img.shields.io/badge/Go-1.23.3-00ADD8?style=flat&logo=Go)](https://go.dev/doc/)
 [![NPM](https://img.shields.io/badge/npm-reference-CB3837?style=flat&logo=npm&logoColor=CB3837&labelColor=747474)](https://www.npmjs.com/package/@sapiensxxv/gate-limiter-cli)
 ![HomeBrew](https://img.shields.io/badge/Homebrew-reference-FBB040?style=flat&logo=Homebrew&logoColor=FBB040)
 [![Docker](https://img.shields.io/badge/Docker-reference-2496ED?style=flat&logo=Docker&logoColor=2496ED)](https://hub.docker.com/repository/docker/sjhn/gate-limiter/general)
@@ -89,6 +89,7 @@ docker run -d \
 | `client`   | [ClientLimit](#clientlimit)       | Global per-client rate limit                                                                                       |
 | `apis`     | `[Api]`                           | Per-API rate limit rules                                                                                           |
 | `target`   | `string`                          | Target domain URL for allowed requests                                                                             |
+| `port`     | `int`                             | Server port (default: `8081`)                                                                                      |
 
 ---
 
