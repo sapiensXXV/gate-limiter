@@ -17,6 +17,14 @@ type FixedWindowCounterLimiter struct {
 
 var _ types.RateLimiter = (*FixedWindowCounterLimiter)(nil)
 
+const fixedWindowLuaScript = `
+local current = redis.call("INCR", KEYS[1])
+if tonumber(current) == 1 then
+	redis.call("EXPIRE", KEYS[1], ARGV[1])
+end
+return current
+`
+
 func NewFixedWindowCounterLimiter(
 	keyGenerator util.KeyGenerator,
 	redisClient types.RedisClient,
@@ -60,15 +68,27 @@ func (l *FixedWindowCounterLimiter) IsTarget(requestMethod, requestURL string) *
 }
 
 func (l *FixedWindowCounterLimiter) IsAllowed(ip string, api *types.ApiMatchResult, _ *types.QueuedRequest) types.RateLimitDecision {
-	log.Printf("ip_address: [%s]를 검사합니다.", ip)
-	// time.Time.Truncate(d) 메서드는 현재 시간을 d단위로 내림 처리 해주는 역할을 한다.
-	windowStart := time.Now().Truncate(time.Duration(api.WindowSeconds) * time.Second)
-	key := l.KeyGenerator.Make(ip, api.Identifier) // redis_key
+	//log.Printf("ip_address: [%s]를 검사합니다.", ip)
+	//// time.Time.Truncate(d) 메서드는 현재 시간을 d단위로 내림 처리 해주는 역할을 한다.
+	//windowStart := time.Now().Truncate(time.Duration(api.WindowSeconds) * time.Second)
+	//key := l.KeyGenerator.Make(ip, api.Identifier) // redis_key
+	//
+	//cnt, err := l.RedisClient.Incr(key)
+	//if err != nil {
+	//	return types.RateLimitDecision{Allowed: false}
+	//}
 
-	cnt, err := l.RedisClient.Incr(key)
+	windowStart := time.Now().Truncate(time.Duration(api.WindowSeconds) * time.Second)
+	key := l.KeyGenerator.Make(ip, api.Identifier)
+
+	// Lua 스크립트로 INCR과 EXPIRE를 원자적으로 한번에 실행
+	result, err := l.RedisClient.Eval(fixedWindowLuaScript, []string{key}, api.WindowSeconds)
 	if err != nil {
+		log.Printf("redis eval err: $v\n", err)
 		return types.RateLimitDecision{Allowed: false}
 	}
+
+	cnt := result.(int64)
 
 	// 최초 생성 때만 만료시간 세팅
 	if cnt == 1 {

@@ -7,15 +7,20 @@ import (
 	"fmt"
 	"gate-limiter/config/settings"
 	"gate-limiter/internal/limiter/types"
-	"github.com/redis/go-redis/v9"
 	"log"
 	"strconv"
 	"time"
+
+	"github.com/redis/go-redis/v9"
 )
 
 type DefaultRedisClient struct {
 	ctx    context.Context
 	client *redis.Client
+}
+
+func (d *DefaultRedisClient) Eval(script string, keys []string, args ...interface{}) (interface{}, error) {
+	return d.client.Eval(d.ctx, script, keys, args...).Result()
 }
 
 var _ types.RedisClient = (*DefaultRedisClient)(nil)
