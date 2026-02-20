@@ -3,6 +3,7 @@ package admin
 import (
 	"embed"
 	"gate-limiter/config/settings"
+	"gate-limiter/internal/buildinfo"
 	"html/template"
 	"log/slog"
 	"net/http"
@@ -36,6 +37,7 @@ type statusPageData struct {
 	RedisHost        string
 	RedisPort        int
 	RedisDB          int
+	Version          string
 }
 
 type apiData struct {
@@ -107,5 +109,6 @@ func (s *StatusHandler) buildPageData() statusPageData {
 		RedisHost:        rc.Host,
 		RedisPort:        rc.Port,
 		RedisDB:          rc.DB,
+		Version:          buildinfo.Version,
 	}
 }
