@@ -124,7 +124,7 @@ func PrintApiInfo(apis []Api) {
 		fmt.Printf("  - limit            : %d requests\n", api.Limit)
 		fmt.Printf("  - window duration  : %d sec\n", api.WindowSeconds)
 		fmt.Printf("  - token refill     : %d sec\n", api.RefillSeconds)
-		fmt.Printf("  - expiration time  : %d ms\n", api.ExpireSeconds)
+		fmt.Printf("  - expiration time  : %d sec\n", api.ExpireSeconds)
 	}
 }
 

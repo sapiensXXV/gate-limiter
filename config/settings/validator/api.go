@@ -82,7 +82,7 @@ func ValidateApis(apis []ApiValidData) error {
 		// 버킷 or 윈도우 만료시간 검사
 		expireSeconds := api.ExpireSeconds
 		if expireSeconds < 0 {
-			return fmt.Errorf("rateLimiter.apis.expireSecdons: 잘못된 만료 시간(초)입니다. 버킷/윈도우의 만료 주기는 0보다 크거나 같은 정수여야 합니다.\n")
+			return fmt.Errorf("rateLimiter.apis.expireSeconds: 잘못된 만료 시간(초)입니다. 버킷/윈도우의 만료 주기는 0보다 크거나 같은 정수여야 합니다.\n")
 		}
 
 	}

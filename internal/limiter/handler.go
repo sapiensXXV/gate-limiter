@@ -91,7 +91,7 @@ func (h *RateLimitHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	decision := h.Limiter.IsAllowed(clientID, result, queued)
 	if !decision.Allowed {
 		h.Responder.RespondRateLimitExceeded(w, r, decision.Remaining, decision.RetryAfterSec)
-		metrics.ObserveBlocked(policy, "허용치 초과")
+		metrics.ObserveBlocked(policy, "rate_limit_exceeded")
 		return
 	}
 	metrics.ObserveAllowed(policy)
