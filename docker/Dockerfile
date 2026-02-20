@@ -1,6 +1,10 @@
 # 빌드 스테이지: 정적 바이너리 생성
 FROM golang:1.24.5-bookworm AS builder
 
+ARG VERSION=dev
+ARG COMMIT=none
+ARG BUILD_DATE=unknown
+
 WORKDIR /src
 
 # 모듈 캐시 다운받기
