@@ -37,7 +37,7 @@ func Setup(cfg settings.LoggingConfig) (func() error, error) {
 	case "json":
 		handler = slog.NewJSONHandler(w, &slog.HandlerOptions{Level: level})
 	default: // "text"
-		handler = slog.NewTextHandler(w, &slog.HandlerOptions{Level: level})
+		handler = newSpringHandler(w, level)
 	}
 
 	slog.SetDefault(slog.New(handler))
