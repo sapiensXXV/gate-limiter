@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"gate-limiter/config/settings"
 	"gate-limiter/internal/admin"
@@ -17,6 +18,7 @@ import (
 	"os/signal"
 	"strconv"
 	"syscall"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cobra"
@@ -79,13 +81,15 @@ func runServer(_ *cobra.Command, _ []string) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	limitHandler, err := app.InitRateLimitHandlerWithConfig(ctx, config)
+	startTime := time.Now()
+
+	limitHandler, redisPing, err := app.InitRateLimitHandlerWithConfig(ctx, config)
 	if err != nil {
 		return fmt.Errorf("failed to init rate limiter: %w", err)
 	}
 
-	server := initMainServer(config, limitHandler)
-	adminServer := initAdminServer(config)
+	server := initMainServer(config, limitHandler, redisPing, startTime)
+	adminServer := initAdminServer(config, redisPing, startTime)
 
 	go func() {
 		slog.Info("admin server started", "addr", adminServer.Addr)
@@ -115,10 +119,23 @@ func runServer(_ *cobra.Command, _ []string) error {
 	return nil
 }
 
-func initMainServer(config *settings.RootRateLimiterConfig, handler http.Handler) *http.Server {
+func initMainServer(config *settings.RootRateLimiterConfig, handler http.Handler, redisPing func(context.Context) error, startTime time.Time) *http.Server {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusOK)
+	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		redisStatus := "connected"
+		if redisPing != nil {
+			if err := redisPing(r.Context()); err != nil {
+				redisStatus = "disconnected"
+			}
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"status":  "UP",
+			"uptime":  time.Since(startTime).Truncate(time.Second).String(),
+			"redis":   redisStatus,
+			"version": buildinfo.Version,
+			"apis":    len(config.RateLimiter.Apis),
+		})
 	})
 	mux.Handle("/metrics", promhttp.Handler())
 	mux.Handle("/", handler)
@@ -133,9 +150,14 @@ func initMainServer(config *settings.RootRateLimiterConfig, handler http.Handler
 	}
 }
 
-func initAdminServer(config *settings.RootRateLimiterConfig) *http.Server {
+func initAdminServer(config *settings.RootRateLimiterConfig, redisPing func(context.Context) error, startTime time.Time) *http.Server {
 	mux := http.NewServeMux()
 	mux.Handle("/", admin.NewStatusHandler(config))
+	mux.Handle("/api/status", &admin.StatusAPIHandler{
+		Config:    config,
+		RedisPing: redisPing,
+		StartTime: startTime,
+	})
 
 	return &http.Server{
 		Addr:    fmt.Sprintf(":%d", config.RateLimiter.AdminPort),

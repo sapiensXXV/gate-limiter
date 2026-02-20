@@ -21,7 +21,7 @@ func InitRateLimitHandler(ctx context.Context, configPath string) (*limiter.Rate
 		return nil, nil, err
 	}
 
-	handler, err := InitRateLimitHandlerWithConfig(ctx, config)
+	handler, _, err := InitRateLimitHandlerWithConfig(ctx, config)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -30,21 +30,26 @@ func InitRateLimitHandler(ctx context.Context, configPath string) (*limiter.Rate
 }
 
 // InitRateLimitHandlerWithConfig initializes a RateLimitHandler with a pre-loaded config.
-func InitRateLimitHandlerWithConfig(ctx context.Context, config *settings.RootRateLimiterConfig) (*limiter.RateLimitHandler, error) {
+// Returns the handler and a Redis ping function for health checks.
+func InitRateLimitHandlerWithConfig(ctx context.Context, config *settings.RootRateLimiterConfig) (*limiter.RateLimitHandler, func(context.Context) error, error) {
 	redisClient, err := storeredis.NewClient(&config.RedisConfig)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to redis: %w", err)
+		return nil, nil, fmt.Errorf("failed to connect to redis: %w", err)
 	}
 	slog.Info("redis client connected")
 
+	redisPing := func(ctx context.Context) error {
+		return redisClient.Ping(ctx).Err()
+	}
+
 	keyGenerator := NewKeyGenerator(config.RateLimiter)
 	if keyGenerator == nil {
-		return nil, fmt.Errorf("failed to initialize key generator: unsupported identity key: %q", config.RateLimiter.Identity.Key)
+		return nil, nil, fmt.Errorf("failed to initialize key generator: unsupported identity key: %q", config.RateLimiter.Identity.Key)
 	}
 
 	identifier := newClientIdentifier(config.RateLimiter)
 	if identifier == nil {
-		return nil, fmt.Errorf("failed to initialize client identifier: unsupported identity key: %q", config.RateLimiter.Identity.Key)
+		return nil, nil, fmt.Errorf("failed to initialize client identifier: unsupported identity key: %q", config.RateLimiter.Identity.Key)
 	}
 
 	counterStore := storeredis.NewCounterStore(redisClient)
@@ -53,7 +58,7 @@ func InitRateLimitHandlerWithConfig(ctx context.Context, config *settings.RootRa
 
 	rl := initRateLimiter(&config.RateLimiter, keyGenerator, redisClient, ctx)
 
-	return limiter.NewRateLimitHandler(rl, proxy, responder, config.RateLimiter, counterStore, identifier), nil
+	return limiter.NewRateLimitHandler(rl, proxy, responder, config.RateLimiter, counterStore, identifier), redisPing, nil
 }
 
 func initConfig(configPath string) (*settings.RootRateLimiterConfig, error) {
