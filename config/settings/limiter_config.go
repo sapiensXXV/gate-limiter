@@ -3,6 +3,7 @@ package settings
 import (
 	"fmt"
 	"gate-limiter/config/settings/validator"
+	"gate-limiter/internal/buildinfo"
 	"os"
 
 	"gopkg.in/yaml.v3"
@@ -105,27 +106,48 @@ func LoadRateLimitConfig(path string) (*RootRateLimiterConfig, error) {
 
 func PrintBanner(config *RootRateLimiterConfig) {
 	pid := os.Getpid()
+	rc := config.RateLimiter
+	redis := config.RedisConfig
+	log := config.Logging
 
-	fmt.Printf("Version %s\n", "v0.2.0")
-	fmt.Printf("Port: %d\n", config.RateLimiter.Port)
-	fmt.Printf("PID: %d\n", pid)
-	fmt.Printf("Github: https://github.com/sapiensXXV/gate-limiter\n\n")
-	fmt.Printf("strategy: %-20s\n", config.RateLimiter.Strategy)
-	fmt.Printf("category: %-20s\n", config.RateLimiter.Identity.Key)
+	identity := rc.Identity.Key
+	if rc.Identity.Header != "" {
+		identity += " (" + rc.Identity.Header + ")"
+	}
+
+	target := rc.Target
+	if target == "" {
+		target = "(not configured)"
+	}
+
+	clientLimit := "none"
+	if rc.Client.Limit > 0 {
+		clientLimit = fmt.Sprintf("%d req / %ds", rc.Client.Limit, rc.Client.WindowSeconds)
+	}
+
+	fmt.Printf("\n%s (PID: %d)\n\n", buildinfo.Short(), pid)
+	fmt.Printf("  Main server  : http://0.0.0.0:%d\n", rc.Port)
+	fmt.Printf("  Admin page   : http://0.0.0.0:%d\n", rc.AdminPort)
+	fmt.Printf("  Strategy     : %s\n", rc.Strategy)
+	fmt.Printf("  Identity     : %s\n", identity)
+	fmt.Printf("  Client limit : %s\n", clientLimit)
+	fmt.Printf("  Target       : %s\n", target)
+	fmt.Printf("  APIs         : %d rules registered\n", len(rc.Apis))
+	fmt.Printf("  Redis        : %s:%d/%d\n", redis.Host, redis.Port, redis.DB)
+	fmt.Printf("  Logging      : %s → %s (level=%s)\n\n", log.Format, log.Output, log.Level)
 }
 
 func PrintApiInfo(apis []Api) {
-	fmt.Printf("API registered\n")
-	for _, api := range apis {
-		fmt.Printf("  identifier       : %s\n", api.Identifier)
-		fmt.Printf("  - method           : %s\n", api.Method)
-		fmt.Printf("  - path expression  : %s\n", api.Path.Expression)
-		fmt.Printf("  - path value       : %s\n", api.Path.Value)
-		fmt.Printf("  - limit            : %d requests\n", api.Limit)
-		fmt.Printf("  - window duration  : %d sec\n", api.WindowSeconds)
-		fmt.Printf("  - token refill     : %d sec\n", api.RefillSeconds)
-		fmt.Printf("  - expiration time  : %d sec\n", api.ExpireSeconds)
+	if len(apis) == 0 {
+		return
 	}
+	fmt.Println("  API rules:")
+	for _, api := range apis {
+		fmt.Printf("    [%s] %s %s:%s — %d req/%ds\n",
+			api.Identifier, api.Method, api.Path.Expression, api.Path.Value,
+			api.Limit, api.WindowSeconds)
+	}
+	fmt.Println()
 }
 
 func validateConfig(config *RootRateLimiterConfig) error {
