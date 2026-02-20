@@ -3,7 +3,6 @@ package settings
 import (
 	"fmt"
 	"gate-limiter/config/settings/validator"
-	"log"
 	"os"
 
 	"gopkg.in/yaml.v3"
@@ -12,6 +11,7 @@ import (
 type RootRateLimiterConfig struct {
 	RateLimiter RateLimiterConfig `yaml:"rateLimiter"`
 	RedisConfig RedisClientConfig `yaml:"redis"`
+	Logging     LoggingConfig     `yaml:"logging"`
 }
 
 type RedisClientConfig struct {
@@ -57,31 +57,65 @@ type RateLimiterPath struct {
 	Value      string `yaml:"value"`
 }
 
-func LoadRateLimitConfig(path string) (*RootRateLimiterConfig, error) {
+type LoggingConfig struct {
+	Level  string        `yaml:"level"`  // debug | info | warn | error (default: info)
+	Format string        `yaml:"format"` // text | json (default: text)
+	Output string        `yaml:"output"` // stdout | stderr | file (default: stdout)
+	File   LogFileConfig `yaml:"file"`
+}
+
+type LogFileConfig struct {
+	Directory  string `yaml:"directory"`  // log directory (default: ./logs)
+	MaxSizeMB  int    `yaml:"maxSizeMB"`  // max file size in MB (default: 100)
+	MaxAgeDays int    `yaml:"maxAgeDays"` // retention days (default: 30)
+	Compress   bool   `yaml:"compress"`   // gzip after rotation (default: false)
+}
+
+// ParseAndValidateConfig parses and validates config without printing.
+func ParseAndValidateConfig(path string) (*RootRateLimiterConfig, error) {
 	buf, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
 
 	config := &RootRateLimiterConfig{}
-	err = yaml.Unmarshal(buf, config)
-	if err != nil {
-		log.Fatalf("Unmarshal: %v", err)
+	if err := yaml.Unmarshal(buf, config); err != nil {
+		return nil, fmt.Errorf("unmarshal config: %w", err)
 	}
 
-	validateConfig(config)
-
-	printBanner(config)
-	fmt.Printf("strategy: %-20s\n", config.RateLimiter.Strategy)
-	fmt.Printf("category: %-20s\n", config.RateLimiter.Identity.Key)
-
-	printApiInfo(config.RateLimiter.Apis)
+	if err := validateConfig(config); err != nil {
+		return nil, err
+	}
 
 	return config, nil
 }
 
-func printApiInfo(apis []Api) {
-	fmt.Printf("📘API registered\n")
+// LoadRateLimitConfig loads config, validates, and prints banner.
+func LoadRateLimitConfig(path string) (*RootRateLimiterConfig, error) {
+	config, err := ParseAndValidateConfig(path)
+	if err != nil {
+		return nil, err
+	}
+
+	PrintBanner(config)
+	PrintApiInfo(config.RateLimiter.Apis)
+
+	return config, nil
+}
+
+func PrintBanner(config *RootRateLimiterConfig) {
+	pid := os.Getpid()
+
+	fmt.Printf("Version %s\n", "v0.2.0")
+	fmt.Printf("Port: %d\n", config.RateLimiter.Port)
+	fmt.Printf("PID: %d\n", pid)
+	fmt.Printf("Github: https://github.com/sapiensXXV/gate-limiter\n\n")
+	fmt.Printf("strategy: %-20s\n", config.RateLimiter.Strategy)
+	fmt.Printf("category: %-20s\n", config.RateLimiter.Identity.Key)
+}
+
+func PrintApiInfo(apis []Api) {
+	fmt.Printf("API registered\n")
 	for _, api := range apis {
 		fmt.Printf("  identifier       : %s\n", api.Identifier)
 		fmt.Printf("  - method           : %s\n", api.Method)
@@ -94,32 +128,54 @@ func printApiInfo(apis []Api) {
 	}
 }
 
-// validateConfig 설정정보가 올바른지 검사하는 메서드
-func validateConfig(config *RootRateLimiterConfig) {
+func validateConfig(config *RootRateLimiterConfig) error {
 	limiterConfig := config.RateLimiter
 	_, err := validator.ValidateStrategy(limiterConfig.Strategy)
 	if err != nil {
-		log.Fatal("validate configuration failed: ", err)
+		return fmt.Errorf("validate configuration failed: %w", err)
 	}
 
 	if err := validator.ValidateIdentity(limiterConfig.Identity.Key, limiterConfig.Identity.Header); err != nil {
-		log.Fatal("validate configuration failed: ", err)
+		return fmt.Errorf("validate configuration failed: %w", err)
 	}
 
 	apis := createValidateApis(limiterConfig.Apis)
 	if err := validator.ValidateApis(apis); err != nil {
-		log.Fatal("validate configuration failed: ", err)
+		return fmt.Errorf("validate configuration failed: %w", err)
 	}
 
 	portConfig(config)
+	applyLoggingDefaults(config)
+	return nil
+}
+
+func applyLoggingDefaults(config *RootRateLimiterConfig) {
+	if config.Logging.Level == "" {
+		config.Logging.Level = "info"
+	}
+	if config.Logging.Format == "" {
+		config.Logging.Format = "text"
+	}
+	if config.Logging.Output == "" {
+		config.Logging.Output = "stdout"
+	}
+	if config.Logging.File.Directory == "" {
+		config.Logging.File.Directory = "./logs"
+	}
+	if config.Logging.File.MaxSizeMB <= 0 {
+		config.Logging.File.MaxSizeMB = 100
+	}
+	if config.Logging.File.MaxAgeDays <= 0 {
+		config.Logging.File.MaxAgeDays = 30
+	}
 }
 
 func portConfig(config *RootRateLimiterConfig) {
 	if config.RateLimiter.Port == 0 {
-		config.RateLimiter.Port = 8081 // 포트 기본값 8081
+		config.RateLimiter.Port = 8081
 	}
 	if config.RateLimiter.AdminPort == 0 {
-		config.RateLimiter.AdminPort = 8082 // admin 포트 기본값 8082
+		config.RateLimiter.AdminPort = 8082
 	}
 }
 
@@ -144,13 +200,4 @@ func createValidateApis(apis []Api) []validator.ApiValidData {
 		result = append(result, *newApi)
 	}
 	return result
-}
-
-func printBanner(config *RootRateLimiterConfig) {
-	pid := os.Getpid()
-
-	fmt.Printf("Version %s\n", "v0.1.0")
-	fmt.Printf("Port: %d\n", config.RateLimiter.Port)
-	fmt.Printf("PID: %d\n", pid)
-	fmt.Printf("Github: https://github.com/sapiensXXV/gate-limiter\n\n")
 }
