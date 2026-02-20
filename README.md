@@ -63,6 +63,8 @@ gl run
 | Command | Description |
 | --- | --- |
 | `gl run` | Start the rate limiter server |
+| `gl stop` | Stop the daemon process |
+| `gl status` | Check whether the daemon is running |
 | `gl validate` | Validate the configuration file |
 | `gl init` | Generate a default `config.yml` in the current directory |
 | `gl version` | Print version, commit hash, and build date |
@@ -134,7 +136,15 @@ gate-limiter started (PID: 12345)
 To stop the daemon:
 
 ```bash
+gl stop
+# or manually:
 kill $(cat gl.pid)
+```
+
+To check daemon status:
+
+```bash
+gl status
 ```
 
 ---
@@ -179,6 +189,7 @@ docker run -d \
 | ------------- | --------------------------------------- | -------------------------------- |
 | `rateLimiter` | [RateLimiterConfig](#ratelimiterconfig) | Rate limiting configuration root |
 | `redis`       | [RedisClientConfig](#redisclientconfig) | Redis client configuration       |
+| `logging`     | [LoggingConfig](#loggingconfig)         | Logging configuration            |
 
 ---
 
@@ -249,6 +260,26 @@ docker run -d \
 
 ---
 
+### LoggingConfig
+
+| Key      | Type                              | Description                                        |
+| -------- | --------------------------------- | -------------------------------------------------- |
+| `level`  | `string`                          | Log level: `debug`, `info`, `warn`, `error` (default: `info`) |
+| `format` | `string`                          | Log format: `text`, `json` (default: `text`)       |
+| `output` | `string`                          | Output target: `stdout`, `stderr`, `file` (default: `stdout`) |
+| `file`   | [LogFileConfig](#logfileconfig)   | File rotation settings (used when output is `file`) |
+
+### LogFileConfig
+
+| Key          | Type   | Description                              |
+| ------------ | ------ | ---------------------------------------- |
+| `directory`  | `string` | Log directory (default: `./logs`)       |
+| `maxSizeMB`  | `int`    | Max file size in MB (default: `100`)    |
+| `maxAgeDays` | `int`    | Retention days (default: `30`)          |
+| `compress`   | `bool`   | Gzip after rotation (default: `false`)  |
+
+---
+
 ## Admin Page
 
 Gate Limiter provides a built-in admin status page on a separate port so you can verify your configuration at a glance.
@@ -264,12 +295,15 @@ The admin page displays the following information:
 
 | Section | Details |
 | --- | --- |
+| **Live Status** | Redis connection indicator (green/red), uptime, allowed/blocked request counts (auto-refresh: 5s/10s/30s) |
 | **Status** | Whether `target` is configured (with warning if missing) |
 | **Basic Settings** | Target URL, server port, admin port, strategy (algorithm) |
 | **Client Identity** | Identity key (`ipv4` / `cookie`), header name (ipv4 only) |
 | **Global Client Limit** | `limit` and `windowSeconds` (or "none" if not set) |
 | **Per-API Rules** | Identifier, method, path (expression + value), limit, windowSeconds, refillSeconds, expireSeconds, target |
 | **Redis Connection** | Host, port, DB index (password is not displayed) |
+| **Quick Links** | Direct links to `/health` and `/metrics` endpoints |
+| **Metrics Reference** | Prometheus metric names, types, and descriptions |
 
 ---
 
@@ -455,6 +489,69 @@ redis:
 * Processed at a fixed rate
 * Overflow requests are dropped
 * Traffic smoothing for heavy workloads
+
+## Observability
+
+### Health Check
+
+The `/health` endpoint returns a JSON response with server status:
+
+```bash
+curl http://localhost:8081/health
+```
+
+```json
+{
+  "status": "UP",
+  "uptime": "2h15m30s",
+  "redis": "connected",
+  "version": "v0.2.0",
+  "apis": 3
+}
+```
+
+Useful for Kubernetes liveness/readiness probes.
+
+### Prometheus Metrics
+
+Prometheus metrics are exposed at `/metrics` on the main server port.
+
+| Metric | Type | Description |
+| --- | --- | --- |
+| `gatelimiter_http_requests_total` | Counter | Total inbound HTTP requests |
+| `gatelimiter_http_request_duration_seconds` | Histogram | End-to-end request latency |
+| `gatelimiter_rate_limit_decisions_total` | Counter | Rate limit decisions (allowed/blocked) |
+| `gatelimiter_config_limit_per_sec` | Gauge | Configured per-second limit per policy |
+
+### Request ID
+
+Every request is assigned an `X-Request-ID` header. If the client sends an `X-Request-ID`, it is reused; otherwise a 16-character hex ID is generated. The ID is included in structured logs and in the 429 response body for tracing.
+
+### Rate Limit Response (429)
+
+When a request is rate-limited, the server responds with `429 Too Many Requests`:
+
+```json
+{
+  "error": "Too Many Requests",
+  "message": "Rate limit exceeded. Please retry after 58 seconds.",
+  "retry_after_seconds": 58,
+  "remaining": 0,
+  "request_id": "a1b2c3d4e5f67890"
+}
+```
+
+The `message` field is localized based on the `Accept-Language` header (`ko` → Korean, default → English).
+
+Response headers:
+
+| Header | Description |
+| --- | --- |
+| `X-RateLimit-Remaining` | Remaining requests in the current window |
+| `X-RateLimit-Reset` | Unix timestamp when the window resets |
+| `X-RateLimit-Retry-After` | Seconds until the client can retry |
+
+---
 
 ## Algorithms
 

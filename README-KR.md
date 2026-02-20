@@ -63,6 +63,8 @@ gl run
 | 커맨드 | 설명 |
 | --- | --- |
 | `gl run` | 레이트 리미터 서버 시작 |
+| `gl stop` | 데몬 프로세스 종료 |
+| `gl status` | 데몬 실행 상태 확인 |
 | `gl validate` | 설정 파일 유효성 검사 |
 | `gl init` | 현재 디렉토리에 기본 `config.yml` 생성 |
 | `gl version` | 버전, 커밋 해시, 빌드 날짜 출력 |
@@ -134,7 +136,15 @@ gate-limiter started (PID: 12345)
 데몬 종료:
 
 ```bash
+gl stop
+# 또는 수동으로:
 kill $(cat gl.pid)
+```
+
+데몬 상태 확인:
+
+```bash
+gl status
 ```
 
 ---
@@ -179,6 +189,7 @@ docker run -d \
 | ------------- | --------------------------------------- | ------------------------ |
 | `rateLimiter` | [RateLimiterConfig](#ratelimiterconfig) | 레이트 리미팅 설정 루트 객체 |
 | `redis`       | [RedisClientConfig](#redisclientconfig) | Redis 클라이언트 설정       |
+| `logging`     | [LoggingConfig](#loggingconfig)         | 로깅 설정                  |
 
 ---
 
@@ -249,6 +260,26 @@ docker run -d \
 
 ---
 
+### LoggingConfig
+
+| Key      | Type                              | Description                                            |
+| -------- | --------------------------------- | ------------------------------------------------------ |
+| `level`  | `string`                          | 로그 레벨: `debug`, `info`, `warn`, `error` (기본값: `info`) |
+| `format` | `string`                          | 로그 형식: `text`, `json` (기본값: `text`)                |
+| `output` | `string`                          | 출력 대상: `stdout`, `stderr`, `file` (기본값: `stdout`)   |
+| `file`   | [LogFileConfig](#logfileconfig)   | 파일 로테이션 설정 (output이 `file`일 때 사용)               |
+
+### LogFileConfig
+
+| Key          | Type     | Description                            |
+| ------------ | -------- | -------------------------------------- |
+| `directory`  | `string` | 로그 디렉토리 (기본값: `./logs`)          |
+| `maxSizeMB`  | `int`    | 파일당 최대 크기 MB (기본값: `100`)        |
+| `maxAgeDays` | `int`    | 보관 일수 (기본값: `30`)                  |
+| `compress`   | `bool`   | 로테이션 후 gzip 압축 (기본값: `false`)    |
+
+---
+
 ## Admin 페이지
 
 Gate Limiter는 별도 포트에서 설정 상태를 한눈에 확인할 수 있는 Admin 페이지를 제공합니다.
@@ -262,12 +293,15 @@ Admin 페이지에서 확인할 수 있는 정보:
 
 | 항목 | 내용 |
 | --- | --- |
+| **실시간 상태** | Redis 연결 인디케이터 (초록/빨강), 가동 시간, 허용/차단 요청 수 (자동 새로고침: 5s/10s/30s) |
 | **상태 요약** | `target` 설정 여부 (미설정 시 경고 표시) |
 | **기본 설정** | Target URL, 서버 포트, Admin 포트, 전략(알고리즘) |
 | **클라이언트 식별** | 식별 기준 (`ipv4` / `cookie`), 헤더 이름 (ipv4일 때) |
 | **글로벌 클라이언트 제한** | `limit`, `windowSeconds` (미설정 시 "없음") |
 | **API별 제한 규칙** | identifier, method, path (expression + value), limit, windowSeconds, refillSeconds, expireSeconds, target |
 | **Redis 연결 정보** | host, port, DB index (비밀번호는 표시하지 않음) |
+| **엔드포인트 링크** | `/health`, `/metrics` 엔드포인트 바로가기 |
+| **메트릭 참조** | Prometheus 메트릭 이름, 타입, 설명 테이블 |
 
 ---
 
@@ -448,6 +482,69 @@ redis:
 * 고정 속도로 처리
 * 오버플로우 요청은 드롭
 * 고부하 작업의 트래픽 스무딩
+
+## 관측성 (Observability)
+
+### 헬스 체크
+
+`/health` 엔드포인트는 서버 상태를 JSON으로 반환합니다:
+
+```bash
+curl http://localhost:8081/health
+```
+
+```json
+{
+  "status": "UP",
+  "uptime": "2h15m30s",
+  "redis": "connected",
+  "version": "v0.2.0",
+  "apis": 3
+}
+```
+
+Kubernetes liveness/readiness probe에 활용할 수 있습니다.
+
+### Prometheus 메트릭
+
+Prometheus 메트릭은 메인 서버 포트의 `/metrics` 엔드포인트에서 제공됩니다.
+
+| 메트릭 | 타입 | 설명 |
+| --- | --- | --- |
+| `gatelimiter_http_requests_total` | Counter | 총 인바운드 HTTP 요청 수 |
+| `gatelimiter_http_request_duration_seconds` | Histogram | 요청 처리 지연 시간 |
+| `gatelimiter_rate_limit_decisions_total` | Counter | Rate limit 판단 결과 (allowed/blocked) |
+| `gatelimiter_config_limit_per_sec` | Gauge | 정책별 초당 제한 설정값 |
+
+### Request ID
+
+모든 요청에 `X-Request-ID` 헤더가 부여됩니다. 클라이언트가 `X-Request-ID`를 보내면 해당 값을 재사용하고, 없으면 16자 hex ID가 자동 생성됩니다. 구조화 로그와 429 응답 본문에 포함되어 요청 추적에 활용할 수 있습니다.
+
+### Rate Limit 응답 (429)
+
+요청이 제한되면 `429 Too Many Requests`를 반환합니다:
+
+```json
+{
+  "error": "Too Many Requests",
+  "message": "Rate limit exceeded. Please retry after 58 seconds.",
+  "retry_after_seconds": 58,
+  "remaining": 0,
+  "request_id": "a1b2c3d4e5f67890"
+}
+```
+
+`message` 필드는 `Accept-Language` 헤더에 따라 한국어/영문으로 자동 전환됩니다.
+
+응답 헤더:
+
+| 헤더 | 설명 |
+| --- | --- |
+| `X-RateLimit-Remaining` | 현재 윈도우의 남은 요청 수 |
+| `X-RateLimit-Reset` | 윈도우 리셋 시점 (Unix timestamp) |
+| `X-RateLimit-Retry-After` | 재시도 가능까지 남은 초 |
+
+---
 
 ## 알고리즘
 
