@@ -29,47 +29,145 @@ You can run it as a standalone service using Docker, and determine request allow
 
 ```bash
 # Homebrew
-homebrew install gate-limiter
+brew tap sapiensXXV/gate-limiter
+brew install gate-limiter
 
 # NPM
 npm install -g @sapiensxxv/gate-limiter-cli
 
-# with docker compose
-git clone https://github.com/your-org/gate-limiter.git
-cd gate-limiter/docker
-export GATE_LIMITER_TAG=v0.1.0  # optional
-docker compose up -d
-
-# only docker image
+# Docker
 docker pull sjhn/gate-limiter:latest
+```
+
+---
+
+## Quick Start
+
+```bash
+# 1. Generate a default config file
+gl init
+
+# 2. Edit config.yml to match your environment
+vi config.yml
+
+# 3. Start the server
+gl run
+```
+
+---
+
+## CLI Usage
+
+### Commands
+
+| Command | Description |
+| --- | --- |
+| `gl run` | Start the rate limiter server |
+| `gl validate` | Validate the configuration file |
+| `gl init` | Generate a default `config.yml` in the current directory |
+| `gl version` | Print version, commit hash, and build date |
+
+### Global Flags
+
+| Flag | Short | Description |
+| --- | --- | --- |
+| `--config <path>` | `-c` | Config file path (default: `$GATE_LIMITER_CONFIG` or `config.yml`) |
+
+### `gl run` Flags
+
+| Flag | Short | Description |
+| --- | --- | --- |
+| `--daemon` | `-d` | Run the server in the background (daemon mode) |
+
+### Environment Variables
+
+| Variable | Description |
+| --- | --- |
+| `GATE_LIMITER_CONFIG` | Config file path. Used when `-c` flag is not provided. Falls back to `config.yml` if unset. |
+
+### Config Resolution Order
+
+1. `-c` / `--config` flag
+2. `GATE_LIMITER_CONFIG` environment variable
+3. `config.yml` in the current directory
+
+### Examples
+
+```bash
+# Start server (foreground)
+gl run
+
+# Start server with a specific config file
+gl run -c /etc/gate-limiter/config.yml
+
+# Start server in daemon mode (background)
+gl run -d
+
+# Validate config before starting
+gl validate
+
+# Validate a specific config file
+gl validate -c production.yml
+
+# Check version
+gl version
+```
+
+### Daemon Mode
+
+Running `gl run -d` starts the server as a background process and immediately returns control to the terminal.
+
+```
+$ gl run -d
+gate-limiter started (PID: 12345)
+  server    : http://localhost:8081
+  admin page: http://localhost:8082
+  log       : gl.log
+  pid       : gl.pid
+```
+
+| File | Description |
+| --- | --- |
+| `gl.pid` | Contains the PID of the background process |
+| `gl.log` | Server log output (stdout/stderr) |
+
+To stop the daemon:
+
+```bash
+kill $(cat gl.pid)
+```
+
+---
+
+## Running with Docker
+
+### Docker Compose
+
+```bash
+git clone https://github.com/sapiensXXV/gate-limiter.git
+cd gate-limiter/docker
+docker compose up -d
+```
+
+* The `config.yml` file is mounted into the container from the project root.
+* The `GATE_LIMITER_CONFIG` environment variable is already defined in `docker-compose.yml`.
+* If you change `port` in `config.yml`, you must also update the port mapping in `docker-compose.yml`.
+
+### Docker Image
+
+```bash
 docker run -d \
   -p 8081:8081 \
+  -p 8082:8082 \
   -v /path/to/config.yml:/etc/gate-limiter/config.yml:ro \
   -e GATE_LIMITER_CONFIG=/etc/gate-limiter/config.yml \
   --name gate-limiter \
   sjhn/gate-limiter:latest
 ```
 
-### Notes
-
-* **Using NPM**
-
-  * The `config.yml` file must exist in the current directory where the command is executed.
-  * Run the rate limiter using the `gate-limiter` command.
-
-* **Using docker compose**
-
-  * The `config.yml` file is included inside the container.
-  * The `GATE_LIMITER_CONFIG` environment variable is already defined in `docker-compose.yml`.
-  * If you change `port` in `config.yml`, you must also update the port mapping in `docker-compose.yml` and the `EXPOSE` value in the `Dockerfile`.
-
-* **Using docker image**
-
-  * You must prepare a `config.yml` file and mount it into the container.
-  * The `GATE_LIMITER_CONFIG` environment variable must point to the config path inside the container.
-  * If you change `port` in `config.yml`, you must also match the `-p` port mapping and the `EXPOSE` value accordingly.
-
-* **Admin page**: After starting the server, visit `http://localhost:8082` (default) to view the current configuration status. The admin port can be changed via the `adminPort` option in `config.yml`.
+* You must prepare a `config.yml` file and mount it into the container.
+* The `GATE_LIMITER_CONFIG` environment variable must point to the config path inside the container.
+* If you change `port` or `adminPort` in `config.yml`, you must also match the `-p` port mapping accordingly.
 
 ---
 

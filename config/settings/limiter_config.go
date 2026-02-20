@@ -3,7 +3,6 @@ package settings
 import (
 	"fmt"
 	"gate-limiter/config/settings/validator"
-	"log"
 	"os"
 
 	"gopkg.in/yaml.v3"
@@ -57,30 +56,65 @@ type RateLimiterPath struct {
 	Value      string `yaml:"value"`
 }
 
-func LoadRateLimitConfig(path string) (*RootRateLimiterConfig, error) {
+// ParseAndValidateConfig parses the config file and validates it.
+// Returns the config or an error. No output is printed.
+func ParseAndValidateConfig(path string) (*RootRateLimiterConfig, error) {
 	buf, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
 
 	config := &RootRateLimiterConfig{}
-	err = yaml.Unmarshal(buf, config)
-	if err != nil {
-		log.Fatalf("Unmarshal: %v", err)
+	if err := yaml.Unmarshal(buf, config); err != nil {
+		return nil, fmt.Errorf("unmarshal: %w", err)
 	}
 
-	validateConfig(config)
-
-	printBanner(config)
-	fmt.Printf("strategy: %-20s\n", config.RateLimiter.Strategy)
-	fmt.Printf("category: %-20s\n", config.RateLimiter.Identity.Key)
-
-	printApiInfo(config.RateLimiter.Apis)
+	if err := ValidateConfig(config); err != nil {
+		return nil, err
+	}
 
 	return config, nil
 }
 
-func printApiInfo(apis []Api) {
+// ValidateConfig validates the configuration and returns an error if invalid.
+func ValidateConfig(config *RootRateLimiterConfig) error {
+	limiterConfig := config.RateLimiter
+
+	if _, err := validator.ValidateStrategy(limiterConfig.Strategy); err != nil {
+		return fmt.Errorf("validate configuration failed: %w", err)
+	}
+
+	if err := validator.ValidateIdentity(limiterConfig.Identity.Key, limiterConfig.Identity.Header); err != nil {
+		return fmt.Errorf("validate configuration failed: %w", err)
+	}
+
+	apis := createValidateApis(limiterConfig.Apis)
+	if err := validator.ValidateApis(apis); err != nil {
+		return fmt.Errorf("validate configuration failed: %w", err)
+	}
+
+	applyPortDefaults(config)
+	return nil
+}
+
+// LoadRateLimitConfig parses, validates, and prints banner/API info.
+// Maintains backward compatibility with existing callers.
+func LoadRateLimitConfig(path string) (*RootRateLimiterConfig, error) {
+	config, err := ParseAndValidateConfig(path)
+	if err != nil {
+		return nil, err
+	}
+
+	PrintBanner(config)
+	fmt.Printf("strategy: %-20s\n", config.RateLimiter.Strategy)
+	fmt.Printf("category: %-20s\n", config.RateLimiter.Identity.Key)
+
+	PrintApiInfo(config.RateLimiter.Apis)
+
+	return config, nil
+}
+
+func PrintApiInfo(apis []Api) {
 	fmt.Printf("📘API registered\n")
 	for _, api := range apis {
 		fmt.Printf("  identifier       : %s\n", api.Identifier)
@@ -94,32 +128,12 @@ func printApiInfo(apis []Api) {
 	}
 }
 
-// validateConfig 설정정보가 올바른지 검사하는 메서드
-func validateConfig(config *RootRateLimiterConfig) {
-	limiterConfig := config.RateLimiter
-	_, err := validator.ValidateStrategy(limiterConfig.Strategy)
-	if err != nil {
-		log.Fatal("validate configuration failed: ", err)
-	}
-
-	if err := validator.ValidateIdentity(limiterConfig.Identity.Key, limiterConfig.Identity.Header); err != nil {
-		log.Fatal("validate configuration failed: ", err)
-	}
-
-	apis := createValidateApis(limiterConfig.Apis)
-	if err := validator.ValidateApis(apis); err != nil {
-		log.Fatal("validate configuration failed: ", err)
-	}
-
-	portConfig(config)
-}
-
-func portConfig(config *RootRateLimiterConfig) {
+func applyPortDefaults(config *RootRateLimiterConfig) {
 	if config.RateLimiter.Port == 0 {
-		config.RateLimiter.Port = 8081 // 포트 기본값 8081
+		config.RateLimiter.Port = 8081
 	}
 	if config.RateLimiter.AdminPort == 0 {
-		config.RateLimiter.AdminPort = 8082 // admin 포트 기본값 8082
+		config.RateLimiter.AdminPort = 8082
 	}
 }
 
@@ -146,10 +160,9 @@ func createValidateApis(apis []Api) []validator.ApiValidData {
 	return result
 }
 
-func printBanner(config *RootRateLimiterConfig) {
+func PrintBanner(config *RootRateLimiterConfig) {
 	pid := os.Getpid()
 
-	fmt.Printf("Version %s\n", "v0.1.0")
 	fmt.Printf("Port: %d\n", config.RateLimiter.Port)
 	fmt.Printf("PID: %d\n", pid)
 	fmt.Printf("Github: https://github.com/sapiensXXV/gate-limiter\n\n")
