@@ -3,6 +3,7 @@ tmp/**
 개선점_redis.md
 .diff
 .DS_Store
+memo.md
 merged_src_file.txt
 build/**
 .env
