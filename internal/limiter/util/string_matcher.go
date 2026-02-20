@@ -1,7 +1,7 @@
 package util
 
 import (
-	"log"
+	"log/slog"
 	"regexp"
 	"sync"
 )
@@ -21,7 +21,7 @@ func MatchRegex(target string, regex string) bool {
 		var err error
 		r, err = regexp.Compile(regex)
 		if err != nil {
-			log.Println("error while compile regex:", err)
+			slog.Error("regex compile error", "pattern", regex, "error", err)
 			return false
 		}
 	}

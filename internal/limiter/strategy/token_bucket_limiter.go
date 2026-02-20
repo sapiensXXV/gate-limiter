@@ -6,7 +6,7 @@ import (
 	"gate-limiter/internal/limiter/store"
 	"gate-limiter/internal/limiter/types"
 	"gate-limiter/internal/limiter/util"
-	"log"
+	"log/slog"
 )
 
 type TokenBucketLimiter struct {
@@ -60,7 +60,7 @@ func (l *TokenBucketLimiter) IsAllowed(ip string, api *types.ApiMatchResult, _ *
 
 	result, err := l.Store.TryConsume(context.TODO(), key, api.Limit, api.RefillSeconds, api.ExpireSeconds)
 	if err != nil {
-		log.Printf("token bucket store error: key=[%s], err=%v", key, err)
+		slog.Error("token bucket store error", "key", key, "error", err)
 		return types.RateLimitDecision{
 			Allowed:       false,
 			Remaining:     0,

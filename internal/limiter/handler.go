@@ -8,8 +8,9 @@ import (
 	"gate-limiter/internal/limiter/store"
 	"gate-limiter/internal/limiter/types"
 	"gate-limiter/internal/metrics"
+	"gate-limiter/internal/middleware"
 	"html/template"
-	"log"
+	"log/slog"
 	"math"
 	"net/http"
 	"time"
@@ -52,20 +53,22 @@ func NewRateLimitHandler(
 }
 
 func (h *RateLimitHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	logger := middleware.LoggerFrom(r.Context())
+
 	if h.Config.Target == "" {
-		h.respondDefaultPage(w)
+		h.respondDefaultPage(w, logger)
 		return
 	}
 
 	if h.Limiter == nil {
-		log.Println("RateLimitHandler.Limiter is nil!")
+		logger.Error("RateLimitHandler.Limiter is nil")
 		return
 	}
 
 	policy := h.Config.Strategy
 	clientID := h.Identifier.Identify(w, r)
 
-	if exceeded, _, retryAfter := h.isClientLimitExceeded(clientID); exceeded {
+	if exceeded, _, retryAfter := h.isClientLimitExceeded(logger, clientID); exceeded {
 		h.Responder.RespondRateLimitExceeded(w, r, 0, retryAfter)
 		metrics.ObserveBlocked(policy, "client_limit_exceeded")
 		return
@@ -96,7 +99,7 @@ func (h *RateLimitHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.Proxy.ToOrigin(w, r, h.Config.Target)
 }
 
-func (h *RateLimitHandler) isClientLimitExceeded(clientID string) (exceeded bool, remaining int, retryAfterSec int) {
+func (h *RateLimitHandler) isClientLimitExceeded(logger *slog.Logger, clientID string) (exceeded bool, remaining int, retryAfterSec int) {
 	if h.Config.Client.Limit <= 0 || h.Config.Client.WindowSeconds <= 0 || h.ClientStore == nil {
 		return false, 0, 0
 	}
@@ -107,7 +110,7 @@ func (h *RateLimitHandler) isClientLimitExceeded(clientID string) (exceeded bool
 
 	result, err := h.ClientStore.IncrementAndGet(context.TODO(), key, h.Config.Client.WindowSeconds)
 	if err != nil {
-		log.Printf("client limit check error: %v", err)
+		logger.Error("client limit check error", "error", err)
 		return false, 0, 0
 	}
 
@@ -124,12 +127,12 @@ func (h *RateLimitHandler) isClientLimitExceeded(clientID string) (exceeded bool
 	return false, h.Config.Client.Limit - int(result.Count), 0
 }
 
-func (h *RateLimitHandler) respondDefaultPage(w http.ResponseWriter) {
+func (h *RateLimitHandler) respondDefaultPage(w http.ResponseWriter, logger *slog.Logger) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 
 	data := struct{ Port int }{Port: h.Config.Port}
 	if err := defaultPageTemplate.Execute(w, data); err != nil {
-		log.Printf("default page template execute error: %v", err)
+		logger.Error("default page template execute error", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	}
 }

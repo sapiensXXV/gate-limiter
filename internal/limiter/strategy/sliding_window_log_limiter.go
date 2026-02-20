@@ -6,7 +6,7 @@ import (
 	"gate-limiter/internal/limiter/store"
 	"gate-limiter/internal/limiter/types"
 	"gate-limiter/internal/limiter/util"
-	"log"
+	"log/slog"
 	"time"
 )
 
@@ -55,13 +55,13 @@ func (l *SlidingWindowLogLimiter) IsTarget(requestMethod, requestPath string) *t
 }
 
 func (l *SlidingWindowLogLimiter) IsAllowed(ip string, api *types.ApiMatchResult, _ *types.QueuedRequest) types.RateLimitDecision {
-	log.Printf("ip_address: [%s]를 검사합니다.\n", ip)
+	slog.Debug("checking rate limit", "ip", ip)
 	key := l.KeyGenerator.Make(ip, api.Identifier)
 	now := time.Now()
 
 	result, err := l.Store.Allow(context.TODO(), key, api.Limit, api.WindowSeconds, now.Unix(), now.String())
 	if err != nil {
-		log.Printf("sliding window log store error: key=[%s], err=%v", key, err)
+		slog.Error("sliding window log store error", "key", key, "error", err)
 		return types.RateLimitDecision{Allowed: false}
 	}
 

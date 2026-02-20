@@ -4,7 +4,7 @@ import (
 	"embed"
 	"gate-limiter/config/settings"
 	"html/template"
-	"log"
+	"log/slog"
 	"net/http"
 )
 
@@ -56,7 +56,7 @@ func (s *StatusHandler) ServeHTTP(w http.ResponseWriter, _ *http.Request) {
 	data := s.buildPageData()
 
 	if err := statusTemplate.Execute(w, data); err != nil {
-		log.Printf("admin template execute error: %v", err)
+		slog.Error("admin template execute error", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	}
 }
