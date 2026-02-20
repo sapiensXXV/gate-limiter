@@ -29,8 +29,8 @@ You can run it as a standalone service using Docker, and determine request allow
 
 ```bash
 # Homebrew
-brew tap sapiensXXV/tap
-brew install gl
+brew tap sapiensXXV/gate-limiter
+brew install gate-limiter
 
 # NPM
 npm install -g @sapiensxxv/gate-limiter-cli
