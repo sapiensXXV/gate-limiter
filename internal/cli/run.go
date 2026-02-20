@@ -6,6 +6,7 @@ import (
 	"gate-limiter/config/settings"
 	"gate-limiter/internal/admin"
 	"gate-limiter/internal/app"
+	"gate-limiter/internal/buildinfo"
 	"gate-limiter/internal/logging"
 	"gate-limiter/internal/metrics"
 	"gate-limiter/internal/middleware"
@@ -30,7 +31,7 @@ var runCmd = &cobra.Command{
 }
 
 func init() {
-	runCmd.Flags().BoolVarP(&daemon, "daemon", "d", false, "run as background daemon")
+	runCmd.Flags().BoolVarP(&daemon, "daemon", "d", false, "run as background daemon (PID: gl.pid, log: gl.log)")
 }
 
 func resolveConfigPath() string {
@@ -69,7 +70,7 @@ func runServer(_ *cobra.Command, _ []string) error {
 	}
 
 	slog.Info("gate-limiter starting",
-		"version", "v0.2.0",
+		"version", buildinfo.Version,
 		"port", config.RateLimiter.Port,
 		"admin_port", config.RateLimiter.AdminPort,
 		"strategy", config.RateLimiter.Strategy,
@@ -102,6 +103,7 @@ func runServer(_ *cobra.Command, _ []string) error {
 		if err := adminServer.Shutdown(context.Background()); err != nil {
 			slog.Error("admin server shutdown error", "error", err)
 		}
+		os.Remove(pidFile)
 	}()
 
 	slog.Info("main server started", "addr", server.Addr)
