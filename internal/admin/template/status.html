@@ -11,12 +11,13 @@
     .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
     .header-left h1 { font-size: 28px; margin-bottom: 4px; }
     .header-left .subtitle { color: #888; font-size: 14px; }
+    .header-left .version { color: #aaa; font-size: 12px; margin-top: 2px; }
     .lang-toggle { display: flex; gap: 0; border: 1px solid #ddd; border-radius: 6px; overflow: hidden; }
     .lang-toggle button { padding: 6px 14px; font-size: 13px; font-weight: 500; border: none; cursor: pointer; background: #fff; color: #666; transition: background 0.15s, color 0.15s; }
     .lang-toggle button.active { background: #333; color: #fff; }
     .lang-toggle button:not(:last-child) { border-right: 1px solid #ddd; }
     .section { background: #fff; border-radius: 8px; box-shadow: 0 1px 6px rgba(0,0,0,0.06); padding: 24px; margin-bottom: 20px; }
-    .section h2 { font-size: 16px; color: #555; margin-bottom: 16px; border-bottom: 1px solid #eee; padding-bottom: 8px; }
+    .section h2 { font-size: 16px; color: #555; margin-bottom: 16px; border-bottom: 1px solid #eee; padding-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
     .alert { background: #fff8e1; border-left: 4px solid #ffc107; padding: 12px 16px; border-radius: 4px; margin-bottom: 16px; font-size: 14px; }
     .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 13px; font-weight: 600; }
     .badge.ok { background: #e8f5e9; color: #2e7d32; }
@@ -31,6 +32,23 @@
     .footer { text-align: center; font-size: 12px; color: #bbb; margin-top: 24px; }
     .footer a { color: #999; text-decoration: none; }
     .footer a:hover { color: #666; text-decoration: underline; }
+    .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: middle; background: #ccc; }
+    .dot.green { background: #4caf50; }
+    .dot.red { background: #f44336; }
+    .refresh-select { font-size: 12px; padding: 2px 6px; border: 1px solid #ddd; border-radius: 4px; color: #666; }
+    .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+    .stat-card { text-align: center; padding: 12px; border-radius: 6px; background: #fafafa; }
+    .stat-card .label { font-size: 12px; color: #888; margin-bottom: 4px; }
+    .stat-card .value { font-size: 22px; font-weight: 700; color: #333; }
+    .stat-card .value.green { color: #2e7d32; }
+    .stat-card .value.red { color: #c62828; }
+    a.endpoint-link { color: #1976d2; text-decoration: none; font-size: 13px; }
+    a.endpoint-link:hover { text-decoration: underline; }
+    .link-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    .link-card { display: block; padding: 14px 16px; border: 1px solid #eee; border-radius: 6px; text-decoration: none; color: #333; transition: border-color 0.15s, box-shadow 0.15s; }
+    .link-card:hover { border-color: #1976d2; box-shadow: 0 2px 8px rgba(25,118,210,0.1); }
+    .link-card .link-name { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+    .link-card .link-desc { font-size: 12px; color: #888; }
   </style>
 </head>
 <body>
@@ -39,10 +57,42 @@
       <div class="header-left">
         <h1>Gate Limiter Admin</h1>
         <p class="subtitle" data-i18n-ko="설정 상태 확인 페이지" data-i18n-en="Configuration Status Page">설정 상태 확인 페이지</p>
+        <p class="version">{{.Version}}</p>
       </div>
       <div class="lang-toggle">
         <button class="active" onclick="switchLang('ko')">한국어</button>
         <button onclick="switchLang('en')">English</button>
+      </div>
+    </div>
+
+    <!-- Live Status -->
+    <div class="section" id="live-status">
+      <h2>
+        <span data-i18n-ko="실시간 상태" data-i18n-en="Live Status">실시간 상태</span>
+        <select class="refresh-select" id="refresh-interval">
+          <option value="0" data-i18n-ko="자동 새로고침: 끔" data-i18n-en="Auto-refresh: Off">자동 새로고침: 끔</option>
+          <option value="5000">5s</option>
+          <option value="10000" selected>10s</option>
+          <option value="30000">30s</option>
+        </select>
+      </h2>
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="label">Redis</div>
+          <div class="value"><span class="dot" id="redis-dot"></span> <span id="redis-status" style="font-size:14px;">—</span></div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Uptime</div>
+          <div class="value" id="uptime" style="font-size:16px;">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="label" data-i18n-ko="허용된 요청" data-i18n-en="Allowed">허용된 요청</div>
+          <div class="value green" id="allowed-count">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="label" data-i18n-ko="차단된 요청" data-i18n-en="Blocked">차단된 요청</div>
+          <div class="value red" id="blocked-count">—</div>
+        </div>
       </div>
     </div>
 
@@ -151,10 +201,62 @@
       </dl>
     </div>
 
-    <p class="footer">Gate Limiter Admin - http://localhost:{{.AdminPort}} · <a href="https://github.com/sapiensXXV/gate-limiter" target="_blank" rel="noopener noreferrer">GitHub</a></p>
+    <!-- Quick Links -->
+    <div class="section">
+      <h2 data-i18n-ko="엔드포인트 링크" data-i18n-en="Quick Links">엔드포인트 링크</h2>
+      <div class="link-grid">
+        <a class="link-card" href="http://localhost:{{.Port}}/health" target="_blank" rel="noopener">
+          <div class="link-name">/health</div>
+          <div class="link-desc" data-i18n-ko="서버 상태 확인 (JSON)" data-i18n-en="Health check endpoint (JSON)">서버 상태 확인 (JSON)</div>
+        </a>
+        <a class="link-card" href="http://localhost:{{.Port}}/metrics" target="_blank" rel="noopener">
+          <div class="link-name">/metrics</div>
+          <div class="link-desc" data-i18n-ko="Prometheus 메트릭" data-i18n-en="Prometheus metrics">Prometheus 메트릭</div>
+        </a>
+      </div>
+    </div>
+
+    <!-- Prometheus Metrics Reference -->
+    <div class="section">
+      <h2 data-i18n-ko="Prometheus 메트릭 참조" data-i18n-en="Prometheus Metrics Reference">Prometheus 메트릭 참조</h2>
+      <table>
+        <thead>
+          <tr>
+            <th data-i18n-ko="메트릭" data-i18n-en="Metric">메트릭</th>
+            <th data-i18n-ko="타입" data-i18n-en="Type">타입</th>
+            <th data-i18n-ko="설명" data-i18n-en="Description">설명</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>gatelimiter_http_requests_total</code></td>
+            <td>Counter</td>
+            <td data-i18n-ko="총 인바운드 HTTP 요청 수" data-i18n-en="Total inbound HTTP requests">총 인바운드 HTTP 요청 수</td>
+          </tr>
+          <tr>
+            <td><code>gatelimiter_http_request_duration_seconds</code></td>
+            <td>Histogram</td>
+            <td data-i18n-ko="요청 처리 지연 시간" data-i18n-en="End-to-end request latency">요청 처리 지연 시간</td>
+          </tr>
+          <tr>
+            <td><code>gatelimiter_rate_limit_decisions_total</code></td>
+            <td>Counter</td>
+            <td data-i18n-ko="Rate limit 판단 결과 (allowed/blocked)" data-i18n-en="Rate limit decisions (allowed/blocked)">Rate limit 판단 결과 (allowed/blocked)</td>
+          </tr>
+          <tr>
+            <td><code>gatelimiter_config_limit_per_sec</code></td>
+            <td>Gauge</td>
+            <td data-i18n-ko="정책별 초당 제한 설정값" data-i18n-en="Configured per-second limit per policy">정책별 초당 제한 설정값</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p class="footer">Gate Limiter Admin · {{.Version}} · <a href="https://github.com/sapiensXXV/gate-limiter" target="_blank" rel="noopener noreferrer">GitHub</a></p>
   </div>
 
   <script>
+    // i18n
     function switchLang(lang) {
       document.querySelectorAll('[data-i18n-' + lang + ']').forEach(function(el) {
         el.textContent = el.getAttribute('data-i18n-' + lang);
@@ -164,6 +266,51 @@
         btn.classList.toggle('active', btn.textContent === (lang === 'ko' ? '한국어' : 'English'));
       });
     }
+
+    // Live status polling
+    var refreshTimer = null;
+
+    function fetchStatus() {
+      fetch('/api/status')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          var dot = document.getElementById('redis-dot');
+          var st = document.getElementById('redis-status');
+          if (data.redis === 'connected') {
+            dot.className = 'dot green';
+            st.textContent = 'connected';
+          } else {
+            dot.className = 'dot red';
+            st.textContent = 'disconnected';
+          }
+          document.getElementById('uptime').textContent = data.uptime;
+          document.getElementById('allowed-count').textContent = Math.floor(data.allowed_total).toLocaleString();
+          document.getElementById('blocked-count').textContent = Math.floor(data.blocked_total).toLocaleString();
+        })
+        .catch(function() {
+          document.getElementById('redis-dot').className = 'dot red';
+          document.getElementById('redis-status').textContent = 'error';
+        });
+    }
+
+    function setupRefresh() {
+      var select = document.getElementById('refresh-interval');
+      select.addEventListener('change', function() {
+        if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null; }
+        var interval = parseInt(this.value);
+        if (interval > 0) {
+          refreshTimer = setInterval(fetchStatus, interval);
+        }
+      });
+      // Start with default (10s)
+      var defaultInterval = parseInt(select.value);
+      if (defaultInterval > 0) {
+        refreshTimer = setInterval(fetchStatus, defaultInterval);
+      }
+    }
+
+    fetchStatus();
+    setupRefresh();
   </script>
 </body>
 </html>
