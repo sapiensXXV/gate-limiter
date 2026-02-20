@@ -35,7 +35,7 @@ func (dph *DefaultProxyHandler) ToOrigin(w http.ResponseWriter, r *http.Request,
 		req.URL.RawQuery = r.URL.RawQuery
 		req.Header.Set("X-Forwarded-For", r.Header.Get(XForwardedFor))
 	}
-	logger.Info("proxying request", "method", r.Method, "target", target.String(), "uri", r.URL.RequestURI())
+	logger.Info("proxying request", "target", target.String(), "uri", r.URL.RequestURI())
 
 	proxy.ServeHTTP(w, r)
 }
