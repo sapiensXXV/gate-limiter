@@ -9,10 +9,10 @@
 
 ---
 
-## 소개 (Introduction)
+## 소개
 
-**gate-limiter**는 API 남용을 방지하고 사용자 간 리소스 사용의 공정성을 보장하기 위해 설계된 **구성형(rate-configurable) 레이트 리미팅(rate-limiting) 미들웨어**입니다.
-Go 언어로 작성되었으며, 다음 다섯 가지 레이트 리미팅 알고리즘을 제공합니다:
+**gate-limiter**는 API 남용을 방지하고 사용자 간 리소스 사용의 공정성을 보장하기 위해 설계된 **구성형(rate-configurable) 처리량 제한(rate-limiting) 미들웨어**입니다.
+Go 언어로 작성되었으며, 다음 다섯 가지 처리량 제한 알고리즘을 제공합니다:
 
 * Token Bucket
 * Leaky Bucket
@@ -25,7 +25,7 @@ Docker를 이용해 독립 실행형 서비스로 운영할 수 있고, RESTful 
 
 ---
 
-## 설치 (Installation)
+## 설치
 
 ```bash
 # Homebrew
@@ -50,12 +50,12 @@ docker run -d \
   sjhn/gate-limiter:latest
 ```
 
-### 주의사항 (Notes)
+### 주의사항
 
 * **NPM 사용 시**
 
   * `config.yml` 파일이 명령어 실행 디렉토리에 존재해야 합니다.
-  * `gate-limiter` 명령어로 레이트 리미터를 실행합니다.
+  * `gate-limiter` 명령어로 처리량 제한을 실행합니다.
 
 * **docker compose 사용 시**
 
@@ -73,24 +73,24 @@ docker run -d \
 
 ---
 
-## 설정 (Configuration)
+## 설정 
 
 ### Root 설정 (`RootRateLimiterConfig`)
 
-| Key           | Type                                    | Description      |
-| ------------- | --------------------------------------- | ---------------- |
-| `rateLimiter` | [RateLimiterConfig](#ratelimiterconfig) | 레이트 리미팅 설정 루트 객체 |
-| `redis`       | [RedisClientConfig](#redisclientconfig) | Redis 클라이언트 설정   |
+| Key           | Type                                    | Description     |
+| ------------- | --------------------------------------- |-----------------|
+| `rateLimiter` | [RateLimiterConfig](#ratelimiterconfig) | 처리량 제한 설정 루트 객체 |
+| `redis`       | [RedisClientConfig](#redisclientconfig) | Redis 클라이언트 설정  |
 
 ---
 
 ### RateLimiterConfig
 
 | Key        | Type                              | Description                                                                                                      |
-| ---------- | --------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| ---------- | --------------------------------- |------------------------------------------------------------------------------------------------------------------|
 | `strategy` | `string`                          | 알고리즘 선택 (`token_bucket`, `leaky_bucket`, `fixed_window_counter`, `sliding_window_counter`, `sliding_window_log`) |
 | `identity` | [ClientIdentity](#clientidentity) | 클라이언트 식별 방식                                                                                                      |
-| `client`   | [ClientLimit](#clientlimit)       | 전역 클라이언트 레이트 제한                                                                                                  |
+| `client`   | [ClientLimit](#clientlimit)       | 전역 클라이언트 처리량 제한                                                                                                  |
 | `apis`     | `[Api]`                           | API 단위 제한 규칙                                                                                                     |
 | `target`   | `string`                          | 허용 요청 전달 대상 도메인 URL                                                                                              |
 | `port`     | `int`                             | 서버 포트 (기본값: `8081`)                                                                                              |
@@ -279,7 +279,7 @@ redis:
 
 ---
 
-### 3. 고트래픽 공개 API (Token Bucket)
+### 3. 고트래픽 공개 API (토큰 버킷)
 
 **상황 설명:**
 Burst 트래픽을 허용하면서 평균 처리량을 제한하는 구조 (공개 API, 외부 클라이언트)
@@ -318,7 +318,7 @@ redis:
 
 ---
 
-### 4. 큐 기반 트래픽 제어 (Leaky Bucket)
+### 4. 큐 기반 트래픽 제어 (누출 버킷)
 
 **상황 설명:**
 요청을 버리지 않고, 처리 속도만 강제로 제한하는 구조 (ML API, 고부하 처리 API)
@@ -356,7 +356,7 @@ redis:
 
 ---
 
-## 알고리즘 (Algorithms)
+## 알고리즘
 
 Gate Limiter는 다음 알고리즘을 지원합니다:
 
@@ -372,7 +372,7 @@ Gate Limiter는 다음 알고리즘을 지원합니다:
 rateLimiter.strategy
 ```
 
-### Token Bucket
+### 토큰 버킷
 요청마다 토큰을 소비하며, 토큰이 존재하면 요청을 허용하고 없으면 거부합니다.  
 토큰은 일정 주기마다 자동으로 보충됩니다.
 
@@ -380,7 +380,7 @@ Parameters:
 * Bucket size → `rateLimiter.apis.limit`  
 * Refill interval → `rateLimiter.apis.refillSeconds`
 
-### Leaky Bucket
+### 누출 버킷
 고정 처리 속도로 요청을 큐(Go channel 모델) 기반으로 처리합니다.  
 큐가 가득 차면 요청은 드롭됩니다.
 
@@ -388,7 +388,7 @@ Parameters:
 * Queue size → `rateLimiter.apis.limit`  
 * Processing interval → `rateLimiter.apis.windowSeconds`
 
-### Fixed Window Counter
+### 고정 윈도우 카운터
 고정된 시간 윈도우 단위로 요청 수를 카운팅합니다.
 
 Rules:
@@ -400,7 +400,7 @@ Parameters:
 * Window size → `rateLimiter.apis.limit`  
 * Window duration → `rateLimiter.apis.windowSeconds`
 
-### Sliding Window Log
+### 슬라이딩 윈도우 로그
 요청 타임스탬프를 저장하고, 이동하는 시간 윈도우 내 요청 수를 기준으로 판단합니다.
 
 Rules:
@@ -412,7 +412,7 @@ Parameters:
 * Window size → `rateLimiter.apis.limit`  
 * Window duration → `rateLimiter.apis.windowSeconds`
 
-### Sliding Window Counter
+### 슬라이딩 윈도우 카운터
 고정 윈도우와 슬라이딩 윈도우를 결합한 방식으로,  
 이전 윈도우와 현재 윈도우 간 가중치 기반 근사 계산(weighted approximation)을 사용합니다.
 
