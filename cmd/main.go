@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"gate-limiter/config/settings"
 	"gate-limiter/internal/admin"
 	"gate-limiter/internal/app"
 	"gate-limiter/internal/metrics"
@@ -24,33 +25,13 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	// handler
-	limitHandler, config, err := app.InitRateLimitHandler(ctx, configPath) // 초기화가 이루어지는 시점
+	limitHandler, config, err := app.InitRateLimitHandler(ctx, configPath)
 	if err != nil {
 		log.Fatal("Error initializing rate limiter handler", err)
 	}
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	})
-	mux.Handle("/metrics", promhttp.Handler())
-	mux.Handle("/", limitHandler)
-
-	portString := fmt.Sprintf(":%d", config.RateLimiter.Port)
-	server := &http.Server{
-		Addr:    portString,
-		Handler: metrics.WithMetrics(mux),
-	}
-
-	// admin server
-	adminHandler := admin.NewStatusHandler(config)
-	adminMux := http.NewServeMux()
-	adminMux.Handle("/", adminHandler)
-	adminServer := &http.Server{
-		Addr:    fmt.Sprintf(":%d", config.RateLimiter.AdminPort),
-		Handler: adminMux,
-	}
+	server := initMainServer(config, limitHandler)
+	adminServer := initAdminServer(config)
 
 	go func() {
 		log.Printf("Admin page: http://localhost:%d\n", config.RateLimiter.AdminPort)
@@ -59,19 +40,46 @@ func main() {
 		}
 	}()
 
-	go func() {
-		<-ctx.Done()
-		log.Println("shutting down server...")
-		if err := server.Shutdown(context.Background()); err != nil {
-			log.Printf("server shutdown error: %v", err)
-		}
-		if err := adminServer.Shutdown(context.Background()); err != nil {
-			log.Printf("admin server shutdown error: %v", err)
-		}
-	}()
+	waitForShutdown(ctx, server, adminServer)
 
 	if err := server.ListenAndServe(); err != http.ErrServerClosed {
 		log.Fatal(err)
 	}
 	log.Println("server stopped")
+}
+
+func initMainServer(config *settings.RootRateLimiterConfig, handler http.Handler) *http.Server {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+	mux.Handle("/metrics", promhttp.Handler())
+	mux.Handle("/", handler)
+
+	return &http.Server{
+		Addr:    fmt.Sprintf(":%d", config.RateLimiter.Port),
+		Handler: metrics.WithMetrics(mux),
+	}
+}
+
+func initAdminServer(config *settings.RootRateLimiterConfig) *http.Server {
+	mux := http.NewServeMux()
+	mux.Handle("/", admin.NewStatusHandler(config))
+
+	return &http.Server{
+		Addr:    fmt.Sprintf(":%d", config.RateLimiter.AdminPort),
+		Handler: mux,
+	}
+}
+
+func waitForShutdown(ctx context.Context, servers ...*http.Server) {
+	go func() {
+		<-ctx.Done()
+		log.Println("shutting down server...")
+		for _, s := range servers {
+			if err := s.Shutdown(context.Background()); err != nil {
+				log.Printf("server shutdown error (%s): %v", s.Addr, err)
+			}
+		}
+	}()
 }
