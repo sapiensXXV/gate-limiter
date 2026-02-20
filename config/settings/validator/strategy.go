@@ -16,24 +16,22 @@ var validStrategies = map[string]struct{}{
 
 func ValidateStrategy(s string) (string, error) {
 	if s == "" {
-		return "", fmt.Errorf("rateLimiter.strategy가 설정되어 있지 않습니다. 유효한 값: %s", strings.Join(sortedKeys(validStrategies), ", "))
+		return "", fmt.Errorf("rateLimiter.strategy: not configured. allowed: %s", strings.Join(sortedKeys(validStrategies), ", "))
 	}
 	if _, ok := validStrategies[s]; ok {
 		return s, nil
 	}
 
-	// 가장 가까운 후보를 찾아서 제안
 	suggestion := closestMatch(s, sortedKeys(validStrategies))
 	if suggestion != "" {
-		return "", fmt.Errorf("알 수 없는 rateLimiter.strategy 값 %q입니다. 유사한 값: %q. 사용 가능한 값: %s", s, suggestion, strings.Join(sortedKeys(validStrategies), ", "))
+		return "", fmt.Errorf("rateLimiter.strategy: unknown value %q. did you mean %q? allowed: %s", s, suggestion, strings.Join(sortedKeys(validStrategies), ", "))
 	}
-	return "", fmt.Errorf("알 수 없는 rateLimiter.strategy 값 %q 입니다. 사용 가능한 값: %s\n", s, strings.Join(sortedKeys(validStrategies), ", "))
+	return "", fmt.Errorf("rateLimiter.strategy: unknown value %q. allowed: %s\n", s, strings.Join(sortedKeys(validStrategies), ", "))
 }
 
-// closestMatch: candidates 중 s와 가장 비슷한 문자열을 반환.
-// 너무 차이가 크면 빈 문자열을 반환해서 제안하지 않음.
+// closestMatch returns the most similar string from candidates.
+// Returns empty string if no candidate is close enough.
 func closestMatch(s string, candidates []string) string {
-	// 낮을수록 더 비슷
 	minDist := -1
 	best := ""
 	for _, c := range candidates {
@@ -45,22 +43,21 @@ func closestMatch(s string, candidates []string) string {
 	}
 
 	if minDist == 0 {
-		return "" // 정확히 일치하는 경우 제안 필요 없음
+		return ""
 	}
 
-	// 유사도 비율 기준: edit distance / max(len) 이 일정 이하인 경우만 제안
 	maxLen := max(len(s), len(best))
 	if maxLen == 0 {
 		return ""
 	}
 	ratio := float64(minDist) / float64(maxLen)
-	if ratio <= 0.4 { // 40% 이하 차이만 제안 (경험적으로 괜찮은 임계값)
+	if ratio <= 0.4 {
 		return best
 	}
 	return ""
 }
 
-// levenshtein 두 문자열 사이의 Levenshtein distance 계산
+// levenshtein computes the Levenshtein distance between two strings.
 func levenshtein(a, b string) int {
 	la := len(a)
 	lb := len(b)
@@ -72,7 +69,6 @@ func levenshtein(a, b string) int {
 		return la
 	}
 
-	// dp테이블을 1차원으로 최적화
 	prev := make([]int, lb+1)
 	curr := make([]int, lb+1)
 
@@ -97,7 +93,7 @@ func levenshtein(a, b string) int {
 	return prev[lb]
 }
 
-// sortedKeys 맵의 키를 정렬된 슬라이스로 반환
+// sortedKeys returns the keys of a map sorted alphabetically.
 func sortedKeys(m map[string]struct{}) []string {
 	keys := make([]string, 0, len(m))
 	for k := range m {

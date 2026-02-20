@@ -6,7 +6,7 @@ import (
 	"gate-limiter/internal/limiter/store"
 	"gate-limiter/internal/limiter/types"
 	"gate-limiter/internal/limiter/util"
-	"log"
+	"log/slog"
 	"math"
 	"time"
 )
@@ -42,7 +42,8 @@ func (l *FixedWindowCounterLimiter) IsTarget(requestMethod, requestURL string) *
 		} else if expressionType == plain {
 			result = util.MatchPlain(requestURL, pathValue)
 		} else {
-			log.Fatalf("Unknown expression type: %s", expressionType)
+			slog.Error("unknown expression type", "type", expressionType)
+			continue
 		}
 
 		if result && api.Method == requestMethod {
@@ -66,7 +67,7 @@ func (l *FixedWindowCounterLimiter) IsAllowed(ip string, api *types.ApiMatchResu
 
 	result, err := l.Store.IncrementAndGet(context.TODO(), key, api.WindowSeconds)
 	if err != nil {
-		log.Printf("counter store error: %v\n", err)
+		slog.Error("counter store error", "error", err)
 		return types.RateLimitDecision{Allowed: false}
 	}
 

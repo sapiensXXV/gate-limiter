@@ -6,7 +6,7 @@ import (
 	"gate-limiter/internal/limiter/store"
 	"gate-limiter/internal/limiter/types"
 	"gate-limiter/internal/limiter/util"
-	"log"
+	"log/slog"
 	"time"
 )
 
@@ -64,7 +64,7 @@ func (l *SlidingWindowCounterLimiter) IsAllowed(
 
 	result, err := l.Store.Allow(context.TODO(), key, api.Limit, api.WindowSeconds, now.Unix(), now.String())
 	if err != nil {
-		log.Printf("sliding window counter store error: key=[%s], err=%v", key, err)
+		slog.Error("sliding window counter store error", "key", key, "error", err)
 		return types.RateLimitDecision{Allowed: false}
 	}
 

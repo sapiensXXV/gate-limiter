@@ -1,43 +1,43 @@
 package cli
 
-const defaultConfigTemplate = `# gate-limiter configuration
-# https://github.com/sapiensXXV/gate-limiter
+var defaultConfigTemplate = `# gate-limiter configuration
 
 rateLimiter:
-  # Algorithm: token_bucket | leaky_bucket | fixed_window_counter
-  #            | sliding_window_counter | sliding_window_log
-  strategy: sliding_window_counter
-
+  strategy: "fixed_window_counter"
   identity:
-    key: ipv4          # ipv4 | cookie
-    header: X-Forwarded-For
-
-  # Global per-client limit
+    key: "ipv4"
+    header: "X-Forwarded-For"
   client:
     limit: 100
     windowSeconds: 60
-
-  # Per-API limits
+  target: "http://localhost:3000"
+  port: 8081
+  adminPort: 8082
   apis:
-    - identifier: example_api
+    - identifier: "example-api"
       path:
-        expression: regex      # exact | prefix | regex
-        value: ^/api/example$
-      method: GET
+        expression: "plain"
+        value: "/api/example"
+      method: "GET"
       limit: 10
       windowSeconds: 60
-      refillSeconds: 60        # token_bucket only
-      expireSeconds: 3600
-
-  # Upstream target (leave empty for standalone mode)
-  target: ""
-
-  # port: 8081       # default 8081
-  # adminPort: 8082  # default 8082
+      refillSeconds: 1
+      expireSeconds: 60
 
 redis:
-  host: localhost
+  host: "localhost"
   port: 6379
   password: ""
   db: 0
+
+# Logging configuration (optional)
+# logging:
+#   level: "info"          # debug | info | warn | error
+#   format: "text"         # text | json
+#   output: "stdout"       # stdout | stderr | file
+#   file:
+#     directory: "./logs"  # log directory
+#     maxSizeMB: 100       # max file size in MB
+#     maxAgeDays: 30       # max retention days
+#     compress: false       # gzip compression for rotated files
 `

@@ -8,7 +8,7 @@ import (
 	"gate-limiter/internal/limiter/strategy"
 	"gate-limiter/internal/limiter/types"
 	"gate-limiter/internal/limiter/util"
-	"log"
+	"log/slog"
 
 	storeredis "gate-limiter/internal/limiter/store/redis"
 
@@ -21,11 +21,26 @@ func InitRateLimitHandler(ctx context.Context, configPath string) (*limiter.Rate
 		return nil, nil, err
 	}
 
+	handler, _, err := InitRateLimitHandlerWithConfig(ctx, config)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return handler, config, nil
+}
+
+// InitRateLimitHandlerWithConfig initializes a RateLimitHandler with a pre-loaded config.
+// Returns the handler and a Redis ping function for health checks.
+func InitRateLimitHandlerWithConfig(ctx context.Context, config *settings.RootRateLimiterConfig) (*limiter.RateLimitHandler, func(context.Context) error, error) {
 	redisClient, err := storeredis.NewClient(&config.RedisConfig)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to connect to redis: %w", err)
 	}
-	log.Println("redis client connection success")
+	slog.Info("redis client connected")
+
+	redisPing := func(ctx context.Context) error {
+		return redisClient.Ping(ctx).Err()
+	}
 
 	keyGenerator := NewKeyGenerator(config.RateLimiter)
 	if keyGenerator == nil {
@@ -43,7 +58,7 @@ func InitRateLimitHandler(ctx context.Context, configPath string) (*limiter.Rate
 
 	rl := initRateLimiter(&config.RateLimiter, keyGenerator, redisClient, ctx)
 
-	return limiter.NewRateLimitHandler(rl, proxy, responder, config.RateLimiter, counterStore, identifier), config, nil
+	return limiter.NewRateLimitHandler(rl, proxy, responder, config.RateLimiter, counterStore, identifier), redisPing, nil
 }
 
 func initConfig(configPath string) (*settings.RootRateLimiterConfig, error) {
@@ -53,7 +68,7 @@ func initConfig(configPath string) (*settings.RootRateLimiterConfig, error) {
 
 	rlc, err := settings.LoadRateLimitConfig(configPath)
 	if err != nil {
-		log.Printf("error occur while loading rate limiter config: %v", err)
+		slog.Error("config loading error", "error", err)
 		return nil, err
 	}
 	return rlc, nil
@@ -66,7 +81,7 @@ func initRateLimiter(
 	ctx context.Context,
 ) types.RateLimiter {
 	var rl types.RateLimiter
-	log.Printf("selected strategy: [%s]\n", config.Strategy)
+	slog.Info("strategy selected", "strategy", config.Strategy)
 	switch config.Strategy {
 	case "token_bucket":
 		s := storeredis.NewTokenBucketStore(redisClient)
@@ -93,7 +108,7 @@ func NewKeyGenerator(config settings.RateLimiterConfig) *util.IpKeyGenerator {
 	if identity.Key == "ipv4" || identity.Key == "cookie" {
 		return util.NewIpKeyGenerator(config)
 	}
-	log.Printf("[ERROR] Wrong identity key value")
+	slog.Error("wrong identity key value")
 	return nil
 }
 

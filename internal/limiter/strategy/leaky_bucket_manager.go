@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"gate-limiter/config/settings"
 	"gate-limiter/internal/limiter/types"
-	"log"
+	"log/slog"
 	"math"
 	"sync"
 	"time"
@@ -25,10 +25,9 @@ func NewLeakyBucketManager(
 	m := &LeakyBucketManager{
 		buckets: make(map[string]map[string]*types.LeakyBucket),
 	}
-	// 맵 초기화 + API별 스케줄러 시작
 	for _, api := range apis {
 		m.buckets[api.Identifier] = make(map[string]*types.LeakyBucket)
-		go m.startScheduling(ctx, api) // 스케줄링 시작
+		go m.startScheduling(ctx, api)
 	}
 
 	return m
@@ -45,7 +44,7 @@ func (m *LeakyBucketManager) Enqueue(
 	buckets, ok := m.buckets[apiIdentifier]
 	if !ok {
 		buckets = make(map[string]*types.LeakyBucket)
-		m.buckets[apiIdentifier] = buckets // 만든 맵을 원본에 연결
+		m.buckets[apiIdentifier] = buckets
 	}
 
 	bucket, ok := buckets[key]
@@ -80,7 +79,6 @@ func (m *LeakyBucketManager) CountBucketFreeCapacity(apiIdentifier string, key s
 	if !ok {
 		return 0, fmt.Errorf("No Bucket Found: api=%s key=%s\n", apiIdentifier, key)
 	}
-	// 채널의 용량과 현재길이를 빼면 여유공간을 알 수 있다.
 	return cap(bucket.Queue) - len(bucket.Queue), nil
 }
 
@@ -118,13 +116,13 @@ func (m *LeakyBucketManager) startScheduling(ctx context.Context, api settings.A
 	}
 
 	ticker := time.NewTicker(interval)
-	log.Printf("%s leaky-bucket scheduler started (interval=%s)\n", api.Identifier, interval)
+	slog.Info("leaky-bucket scheduler started", "api", api.Identifier, "interval", interval)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ctx.Done():
-			log.Printf("%s leaky-bucket scheduler stopped\n", api.Identifier)
+			slog.Info("leaky-bucket scheduler stopped", "api", api.Identifier)
 			return
 		case <-ticker.C:
 			m.processBuckets(api.Identifier)
@@ -139,7 +137,6 @@ func (m *LeakyBucketManager) processBuckets(identifier string) {
 	now := time.Now()
 
 	for key, bucket := range m.buckets[identifier] {
-		// 5분 이상 큐에 들어온 요청이 없으면 버킷 삭제(클린업)
 		if now.Sub(bucket.LastProcessTime) > 5*time.Minute {
 			delete(m.buckets[identifier], key)
 			continue
@@ -150,7 +147,6 @@ func (m *LeakyBucketManager) processBuckets(identifier string) {
 			bucket.LastProcessTime = time.Now()
 			close(item.Done)
 		default:
-			// 큐가 비어있으면 즉시 패스
 		}
 	}
 }

@@ -4,6 +4,7 @@ tmp/**
 memo.md
 .diff
 .DS_Store
+memo.md
 merged_src_file.txt
 build/**
 .env
