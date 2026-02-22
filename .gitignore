@@ -8,6 +8,7 @@ memo.md
 PR.md
 merged_src_file.txt
 build/**
+npm/
 .env
 *.tar.gz
 gate-limiter-linux-amd64
