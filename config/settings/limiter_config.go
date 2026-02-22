@@ -125,7 +125,15 @@ func PrintBanner(config *RootRateLimiterConfig) {
 		clientLimit = fmt.Sprintf("%d req / %ds", rc.Client.Limit, rc.Client.WindowSeconds)
 	}
 
-	fmt.Printf("\n%s (PID: %d)\n\n", buildinfo.Short(), pid)
+	fmt.Println()
+	fmt.Println("   \u2588\u2588\u2588\u2588\u2588\u2588  \u2588\u2588")
+	fmt.Println("  \u2588\u2588       \u2588\u2588")
+	fmt.Println("  \u2588\u2588  \u2588\u2588\u2588  \u2588\u2588")
+	fmt.Println("  \u2588\u2588   \u2588\u2588  \u2588\u2588")
+	fmt.Println("   \u2588\u2588\u2588\u2588\u2588\u2588  \u2588\u2588\u2588\u2588\u2588\u2588\u2588")
+	fmt.Println()
+	fmt.Printf("  :: Gate Limiter ::              (%s)\n\n", buildinfo.Version)
+	fmt.Printf("  PID: %d\n", pid)
 	fmt.Printf("  Main server  : http://0.0.0.0:%d\n", rc.Port)
 	fmt.Printf("  Admin page   : http://0.0.0.0:%d\n", rc.AdminPort)
 	fmt.Printf("  Strategy     : %s\n", rc.Strategy)
